@@ -21,8 +21,9 @@ class SqliteLandingZoneDao(LandingZoneDao):
                 INSERT INTO landing_zones (
                     id, job_id, centroid_lat, centroid_lng,
                     bounds_sw_lat, bounds_sw_lng, bounds_ne_lat, bounds_ne_lng,
-                    slope_degrees, area_sq_ft
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    max_slope_degrees, area_sq_ft, canopy_fraction,
+                    suitability_score, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
@@ -34,8 +35,11 @@ class SqliteLandingZoneDao(LandingZoneDao):
                         landing_zone.bounds.south_west.lng,
                         landing_zone.bounds.north_east.lat,
                         landing_zone.bounds.north_east.lng,
-                        landing_zone.slope_degrees,
+                        landing_zone.max_slope_degrees,
                         landing_zone.area_sq_ft,
+                        landing_zone.canopy_fraction,
+                        landing_zone.suitability_score,
+                        landing_zone.notes,
                     )
                     for landing_zone in landing_zones
                 ],
@@ -68,6 +72,9 @@ class SqliteLandingZoneDao(LandingZoneDao):
                 south_west=GeoPoint(lat=row["bounds_sw_lat"], lng=row["bounds_sw_lng"]),
                 north_east=GeoPoint(lat=row["bounds_ne_lat"], lng=row["bounds_ne_lng"]),
             ),
-            slope_degrees=row["slope_degrees"],
+            max_slope_degrees=row["max_slope_degrees"],
             area_sq_ft=row["area_sq_ft"],
+            canopy_fraction=row["canopy_fraction"],
+            suitability_score=row["suitability_score"],
+            notes=row["notes"],
         )

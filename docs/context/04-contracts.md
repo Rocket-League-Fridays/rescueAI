@@ -113,7 +113,21 @@ NMS + restitch happen **inside** `CvPipeline` before you return this list. The w
 
 ## LandingZone / Route (Member 3 output)
 
-**LandingZone:** `id`, `jobId`, `centroid`, `bounds`, `slopeDegrees`, `areaSqFt`.
+**LandingZone:** `id`, `jobId`, `centroid`, `bounds`, `maxSlopeDegrees`, `areaSqFt`, `canopyFraction?`, `suitabilityScore`, `notes`.
+
+| Field | Meaning |
+| --- | --- |
+| `maxSlopeDegrees` | Steepest slope anywhere inside `bounds` — **not** the slope at `centroid`. A pad is only as landable as its worst corner |
+| `areaSqFt` | Measured from `bounds`, not assumed |
+| `canopyFraction` | `null` when no overhead-cover estimate covers this site. **`null` is not a measured zero** — render it as unknown, never as clear |
+| `suitabilityScore` | 0..1, higher is better. Orders candidates when a router returns more than one |
+| `notes` | Which criteria that score actually accounts for |
+
+`GisRouter.route` returns `list[LandingZone]` — today `YTrailGisRouter` returns exactly one, but the plural is deliberate. A real site finder produces ranked candidates; sort by `suitabilityScore` and show `notes` so an operator can see why the top pick won.
+
+`suitabilityScore` is currently slope-only, and `canopyFraction` is always `null` because the only canopy estimate in the system describes the **subject's** surroundings ([`SituationAssessment.canopyFraction`](#situationassessment)), not a candidate pad. Populating it per-site needs georeferenced imagery sampled across the search area — a dependency on the CV seam, not a GIS-local change.
+
+**Deliberately not in this contract yet: approach and departure clearance.** It is the criterion that most determines whether a helicopter can actually use a site, and its shape is still open — clear bearing sectors, per-quadrant booleans, or a glide-slope angle. It is named here so its absence reads as a known gap rather than an oversight. Whoever implements obstacle clearance adds the field then, in one change across `domain.py`, `schemas.py`, `frontend/src/types/`, the SQLite mapping, and this doc.
 
 **RouteWaypoint:** `lat`, `lng`, `elevationMeters`.
 

@@ -76,8 +76,14 @@ export interface LandingZone {
   jobId: string;
   centroid: GeoPoint;
   bounds: GeoBounds;
-  slopeDegrees: number;
+  /** Steepest slope anywhere inside `bounds`, not the slope at `centroid`. */
+  maxSlopeDegrees: number;
   areaSqFt: number;
+  /** null when no overhead-cover estimate covers this site — not the same as a measured 0. */
+  canopyFraction?: number | null;
+  /** 0..1, higher is better. Read `notes` for which criteria it accounts for. */
+  suitabilityScore: number;
+  notes: string;
 }
 
 export interface RouteWaypoint {
