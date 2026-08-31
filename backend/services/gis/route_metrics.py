@@ -16,6 +16,12 @@ TERRAIN_PACE_FACTOR = {
     RouteLegKind.SUBJECT_LINK: 1.6,
 }
 
+CARRY_PACE_FACTOR = {
+    RouteLegKind.ON_TRAIL: 1.9,
+    RouteLegKind.OFF_TRAIL: 2.8,
+    RouteLegKind.SUBJECT_LINK: 2.8,
+}
+
 
 def haversine_m(a: GeoPoint, b: GeoPoint) -> float:
     dlat = math.radians(b.lat - a.lat)
@@ -56,7 +62,9 @@ def build_leg(
     waypoints: Sequence[RouteWaypoint],
     start_index: int,
     end_index: int,
+    pace_factors: dict[RouteLegKind, float] | None = None,
 ) -> RouteLeg:
+    pace = pace_factors or CARRY_PACE_FACTOR
     span = waypoints[start_index : end_index + 1]
     distance = path_distance_meters(span)
     gain = path_elevation_gain_meters(span)
@@ -67,7 +75,13 @@ def build_leg(
         end_index=end_index,
         distance_meters=distance,
         elevation_gain_meters=gain,
-        estimated_minutes=naismith_minutes(distance, gain, TERRAIN_PACE_FACTOR[kind]),
+        estimated_minutes=naismith_minutes(distance, gain, pace[kind]),
+    )
+
+
+def leg_minutes(leg: RouteLeg, pace_factors: dict[RouteLegKind, float]) -> float:
+    return naismith_minutes(
+        leg.distance_meters, leg.elevation_gain_meters, pace_factors[leg.kind]
     )
 
 

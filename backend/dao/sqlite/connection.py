@@ -126,7 +126,9 @@ CREATE TABLE IF NOT EXISTS routes (
     distance_meters REAL NOT NULL DEFAULT 0,
     elevation_gain_meters REAL NOT NULL DEFAULT 0,
     estimated_minutes REAL NOT NULL DEFAULT 0,
+    inbound_minutes REAL NOT NULL DEFAULT 0,
     legs_json TEXT NOT NULL DEFAULT '[]',
+    notes TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (job_id) REFERENCES jobs(id)
 );
 """
@@ -196,7 +198,9 @@ class SqliteConnectionProvider:
             ("distance_meters", "REAL NOT NULL DEFAULT 0"),
             ("elevation_gain_meters", "REAL NOT NULL DEFAULT 0"),
             ("estimated_minutes", "REAL NOT NULL DEFAULT 0"),
+            ("inbound_minutes", "REAL NOT NULL DEFAULT 0"),
             ("legs_json", "TEXT NOT NULL DEFAULT '[]'"),
+            ("notes", "TEXT NOT NULL DEFAULT ''"),
         ):
             if column not in route_cols:
                 connection.execute(f"ALTER TABLE routes ADD COLUMN {column} {ddl}")

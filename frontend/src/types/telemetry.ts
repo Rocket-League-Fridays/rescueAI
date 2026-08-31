@@ -111,8 +111,13 @@ export interface Route {
   landingZoneId?: string | null;
   distanceMeters: number;
   elevationGainMeters: number;
+  /** Loaded carry out — the leg the route is optimised for. */
   estimatedMinutes: number;
+  /** The same path walked unloaded on the way in. */
+  inboundMinutes: number;
   legs: RouteLeg[];
+  /** Which pace profile and cost rules produced the numbers above. */
+  notes: string;
 }
 
 export interface Job {

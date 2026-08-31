@@ -131,7 +131,7 @@ NMS + restitch happen **inside** `CvPipeline` before you return this list. The w
 
 **RouteWaypoint:** `lat`, `lng`, `elevationMeters`.
 
-**Route:** `id`, `jobId`, `waypoints[]`, `totalCost`, `landingZoneId?`, `distanceMeters`, `elevationGainMeters`, `estimatedMinutes`, `legs[]`.
+**Route:** `id`, `jobId`, `waypoints[]`, `totalCost`, `landingZoneId?`, `distanceMeters`, `elevationGainMeters`, `estimatedMinutes`, `inboundMinutes`, `legs[]`, `notes`.
 
 **RouteLeg:** `kind`, `label`, `startIndex`, `endIndex`, `distanceMeters`, `elevationGainMeters`, `estimatedMinutes`.
 
@@ -141,11 +141,17 @@ NMS + restitch happen **inside** `CvPipeline` before you return this list. The w
 | --- | --- |
 | `distanceMeters` | Ground distance along `waypoints` |
 | `elevationGainMeters` | Cumulative ascent only (descent is not subtracted) |
-| `estimatedMinutes` | Naismith: 12 min/km + 10 min per 100 m ascent, scaled by a per-leg terrain pace factor |
+| `estimatedMinutes` | The **loaded carry out** — Naismith (12 min/km + 10 min per 100 m ascent) at the carry pace factor |
+| `inboundMinutes` | The same path walked **unloaded** on the way in |
+| `notes` | Which pace profile and cost rules produced the numbers |
 
 `legs[]` partitions `waypoints` — legs are contiguous and share endpoints (`leg[n].endIndex == leg[n+1].startIndex`), the first starts at `0`, the last ends at `waypoints.length - 1`, and the leg totals sum to the route totals. Slice `waypoints[startIndex..endIndex]` to draw or highlight one leg; do not duplicate point data into the leg.
 
 Measurement helpers live in [`backend/services/gis/route_metrics.py`](../../backend/services/gis/route_metrics.py) (`build_leg`, `summarize`, `haversine_m`). A new `GisRouter` implementation should reuse them so the readouts stay consistent across routers.
+
+**Routing is optimised for the carry, not the walk in.** `YTrailGisRouter` searches a least-cost path over [`terrain.py`](../../backend/services/gis/terrain.py) using [`CarryCostSurface`](../../backend/services/gis/cost_surface.py), which weights loaded descent above ascent and refuses ground steeper than `MAX_CARRY_SLOPE_DEGREES`. A slope a team scrambles up is the slope that hurts coming down with a litter, so the returned path is deliberately not the shortest one.
+
+A landing zone is only offered if a carry route actually reaches it. Selection runs one Dijkstra sweep from the subject ([`cost_field`](../../backend/services/gis/astar.py)) and filters candidates on reachability plus **footprint** slope, so a pad whose centroid is flat but whose surroundings are not is rejected.
 
 ## Service method signatures
 

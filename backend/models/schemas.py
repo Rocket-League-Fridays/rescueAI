@@ -291,7 +291,9 @@ class RouteOut(CamelModel):
     distance_meters: float = Field(default=0.0, ge=0)
     elevation_gain_meters: float = Field(default=0.0, ge=0)
     estimated_minutes: float = Field(default=0.0, ge=0)
+    inbound_minutes: float = Field(default=0.0, ge=0)
     legs: list[RouteLegSchema] = Field(default_factory=list)
+    notes: str = ""
 
     @classmethod
     def from_domain(cls, route: Route) -> Self:
@@ -304,7 +306,9 @@ class RouteOut(CamelModel):
             distance_meters=route.distance_meters,
             elevation_gain_meters=route.elevation_gain_meters,
             estimated_minutes=route.estimated_minutes,
+            inbound_minutes=route.inbound_minutes,
             legs=[RouteLegSchema.from_domain(leg) for leg in route.legs],
+            notes=route.notes,
         )
 
 
