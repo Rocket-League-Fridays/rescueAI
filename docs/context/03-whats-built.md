@@ -86,7 +86,11 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 - `ApiClient` — incidents, jobs, and artifact content URLs
 - `StreamViewer` — real source and annotated evidence frames; explicit progress / no-detection / failure states
 - Dashboard upload accepts latitude, longitude, and AGL instead of silently using the Y trailhead
-- `TacticalMap` — trail + buffer, Josh pin, LZ polygon, walk-back route
+- `TacticalMap` — satellite/topo basemaps + trail and road overlays, trail corridor + buffer, Josh pin, ranked LZ polygons, per-leg walk-back route, waypoint markers
+- `RoutePanel` + `ElevationProfile` — route totals, ranked LZ readout, per-leg breakdown, elevation profile, waypoint table (coords / elevation / cumulative distance)
+- `frontend/src/lib/geo.ts` — client-side haversine mirroring `route_metrics.haversine_m` so readouts match backend totals
+- `frontend/src/lib/route-colors.ts` — one `RouteLegKind` → color map shared by map, chart, and table
+- `frontend/src/lib/mock-data.ts` — dev-only fixture (**Dev · load mock sortie** button); metrics computed with the real `route_metrics` math
 - Clothing-match alert when `clothingMatchScore` is high
 
 ### Tests (pytest)
@@ -113,7 +117,6 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 ## Placeholders (UI only)
 
 - Raw / processed video panes — copy only, no streaming
-- Map tiles are OSM
 
 ## Not in the repo
 

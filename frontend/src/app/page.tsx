@@ -2,9 +2,11 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
+import { RoutePanel } from "@/components/RoutePanel";
 import { StreamViewer } from "@/components/StreamViewer";
 import { TacticalMap } from "@/components/TacticalMap";
 import { createApiClient } from "@/lib/api-client";
+import { mockIncidentDetail, mockJobDetail } from "@/lib/mock-data";
 import { DashboardPresenter } from "@/presenter/DashboardPresenter";
 import type { DashboardView } from "@/presenter/DashboardView";
 import type { IncidentDetail } from "@/types/incident";
@@ -50,6 +52,13 @@ export default function CommandDashboardPage() {
     (detection) => detection.className === "person",
   );
 
+  function handleLoadMockData() {
+    setErrorMessage(null);
+    setIncident(mockIncidentDetail);
+    setTranscript(mockIncidentDetail.transcript);
+    setJob(mockJobDetail);
+  }
+
   async function handleOpenIncident(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await presenter.openIncident(transcript);
@@ -92,6 +101,7 @@ export default function CommandDashboardPage() {
             artifactContentUrl={(artifactId) => apiClient.artifactContentUrl(artifactId)}
           />
           <TacticalMap incident={incident} job={job} />
+          <RoutePanel incident={incident} job={job} />
         </div>
 
         <aside className="space-y-4">
@@ -125,6 +135,13 @@ export default function CommandDashboardPage() {
                 Open incident
               </button>
             </div>
+            <button
+              type="button"
+              onClick={handleLoadMockData}
+              className="w-full rounded border border-dashed border-olive-700 px-3 py-2 font-mono text-[10px] uppercase text-olive-500"
+            >
+              Dev · load mock sortie
+            </button>
           </form>
 
           {incident ? <IncidentPanel incident={incident} /> : null}

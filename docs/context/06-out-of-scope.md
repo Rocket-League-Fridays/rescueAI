@@ -18,7 +18,7 @@ Do not pull these in “while you are here” unless the team explicitly expands
 - RichDEM / rasterio production slope rasters
 - Helicopter-scale A* (demo walk-back is subject → LZ → trail → trailhead)
 - Live video streaming / frame websocket
-- Mapbox (Leaflet + OSM is the current map)
+- Mapbox / MapLibre (Leaflet is the map; basemaps are keyless Esri imagery, OpenTopoMap, USGS, and OSM)
 
 ## Platform
 
