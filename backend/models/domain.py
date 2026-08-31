@@ -29,6 +29,12 @@ class IncidentStatus(str, Enum):
     CLOSED = "closed"
 
 
+class RouteLegKind(str, Enum):
+    SUBJECT_LINK = "subject_link"
+    OFF_TRAIL = "off_trail"
+    ON_TRAIL = "on_trail"
+
+
 @dataclass(frozen=True)
 class GeoPoint:
     lat: float
@@ -110,13 +116,35 @@ class RouteWaypoint:
     elevation_meters: float
 
 
+@dataclass(frozen=True)
+class RouteLeg:
+    kind: RouteLegKind
+    label: str
+    start_index: int
+    end_index: int
+    distance_meters: float
+    elevation_gain_meters: float
+    estimated_minutes: float
+
+
 @dataclass
 class Route:
+    """A ground route between the subject, a landing zone, and the trail.
+
+    `total_cost` is the search cost the router minimized (distance plus terrain
+    penalties), not a distance. Operator-facing readouts use `distance_meters`,
+    `elevation_gain_meters`, and `estimated_minutes`.
+    """
+
     id: str
     job_id: str
     waypoints: list[RouteWaypoint]
     total_cost: float
     landing_zone_id: str | None = None
+    distance_meters: float = 0.0
+    elevation_gain_meters: float = 0.0
+    estimated_minutes: float = 0.0
+    legs: list[RouteLeg] = field(default_factory=list)
 
 
 @dataclass

@@ -12,15 +12,18 @@ from models.domain import (
     Job,
     LandingZone,
     Route,
+    RouteLegKind,
     RouteWaypoint,
     SituationAssessment,
 )
+from services.gis.route_metrics import build_leg, haversine_m, summarize
 from services.interface.gis_router import GisRouter
 
 _METERS_PER_DEG_LAT = 111_320.0
 _MAX_SLOPE_DEG = 8.0
 _MAX_CANOPY = 0.55
 _LZ_HALF_M = 15.0
+_TRAIL_TAIL_POINTS = 5
 
 
 class YTrailGisRouter(GisRouter):
@@ -41,7 +44,7 @@ class YTrailGisRouter(GisRouter):
         if lz_cell is None:
             return [], None
         landing_zone = _to_landing_zone(job.id, lz_cell, canopy)
-        route = _walk_back(job.id, subject, lz_cell.centroid, trail, landing_zone.id)
+        route = _walk_back(job.id, subject, lz_cell.centroid, trail, landing_zone.id, grid)
         return [landing_zone], route
 
 
@@ -86,7 +89,7 @@ def _best_lz(cells: list[_Cell], subject: GeoPoint, canopy: float) -> _Cell | No
     ]
     if not eligible:
         eligible = sorted(cells, key=lambda cell: cell.slope)[:8]
-    return min(eligible, key=lambda cell: _haversine_m(cell.centroid, subject) + cell.slope * 8)
+    return min(eligible, key=lambda cell: haversine_m(cell.centroid, subject) + cell.slope * 8)
 
 
 def _to_landing_zone(job_id: str, cell: _Cell, canopy: float) -> LandingZone:
@@ -111,47 +114,64 @@ def _walk_back(
     lz: GeoPoint,
     trail: list[GeoPoint],
     landing_zone_id: str,
+    cells: list[_Cell],
 ) -> Route:
-    waypoints = [subject, lz]
+    points = [subject, lz]
+    trail_start_index: int | None = None
     if trail:
-        nearest = min(trail, key=lambda point: _haversine_m(lz, point))
-        waypoints.append(nearest)
-        nearest_index = trail.index(nearest)
-        waypoints.extend(reversed(trail[: nearest_index + 1][-4:]))
-    route_points = [
-        RouteWaypoint(lat=point.lat, lng=point.lng, elevation_meters=1500)
-        for point in waypoints
+        nearest_index = min(range(len(trail)), key=lambda i: haversine_m(lz, trail[i]))
+        trail_start_index = len(points)
+        points.extend(reversed(trail[: nearest_index + 1][-_TRAIL_TAIL_POINTS:]))
+    waypoints = [
+        RouteWaypoint(
+            lat=point.lat,
+            lng=point.lng,
+            elevation_meters=_elevation_at(cells, point),
+        )
+        for point in points
     ]
-    cost = sum(
-        _haversine_m(waypoints[i], waypoints[i + 1]) for i in range(len(waypoints) - 1)
-    )
+    legs = [build_leg(RouteLegKind.SUBJECT_LINK, "Subject to LZ", waypoints, 0, 1)]
+    if trail_start_index is not None:
+        legs.append(
+            build_leg(RouteLegKind.OFF_TRAIL, "LZ to trail", waypoints, 1, trail_start_index)
+        )
+        if len(waypoints) - 1 > trail_start_index:
+            legs.append(
+                build_leg(
+                    RouteLegKind.ON_TRAIL,
+                    "Trail to trailhead",
+                    waypoints,
+                    trail_start_index,
+                    len(waypoints) - 1,
+                )
+            )
+    distance, elevation_gain, minutes = summarize(legs)
     return Route(
         id=str(uuid4()),
         job_id=job_id,
-        waypoints=route_points,
-        total_cost=cost,
+        waypoints=waypoints,
+        total_cost=distance,
         landing_zone_id=landing_zone_id,
+        distance_meters=distance,
+        elevation_gain_meters=elevation_gain,
+        estimated_minutes=minutes,
+        legs=legs,
     )
+
+
+def _elevation_at(cells: list[_Cell], point: GeoPoint) -> float:
+    nearest = min(cells, key=lambda cell: haversine_m(cell.centroid, point))
+    return nearest.elevation
 
 
 def _trail_progress(point: GeoPoint, trail: list[GeoPoint]) -> float:
     if not trail:
         return 0.5
-    nearest_index = min(range(len(trail)), key=lambda i: _haversine_m(point, trail[i]))
+    nearest_index = min(range(len(trail)), key=lambda i: haversine_m(point, trail[i]))
     return nearest_index / max(1, len(trail) - 1)
 
 
 def _min_trail_distance_m(point: GeoPoint, trail: list[GeoPoint]) -> float:
     if not trail:
         return 0.0
-    return min(_haversine_m(point, vertex) for vertex in trail)
-
-
-def _haversine_m(a: GeoPoint, b: GeoPoint) -> float:
-    r = 6_371_000.0
-    dlat = math.radians(b.lat - a.lat)
-    dlng = math.radians(b.lng - a.lng)
-    lat1 = math.radians(a.lat)
-    lat2 = math.radians(b.lat)
-    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
-    return 2 * r * math.asin(min(1.0, math.sqrt(h)))
+    return min(haversine_m(point, vertex) for vertex in trail)

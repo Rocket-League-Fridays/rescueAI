@@ -12,6 +12,7 @@ If you add a field: update `domain.py`, `schemas.py`, `telemetry.ts` / `incident
 | `IncidentStatus` | `open`, `closed` |
 | `ArtifactKind` | `raw_video`, `frame`, `annotated_frame` |
 | `DetectionClassName` | `person`, `vehicle`, `other` |
+| `RouteLegKind` | `subject_link`, `off_trail`, `on_trail` |
 
 ## Geo / camera
 
@@ -116,9 +117,21 @@ NMS + restitch happen **inside** `CvPipeline` before you return this list. The w
 
 **RouteWaypoint:** `lat`, `lng`, `elevationMeters`.
 
-**Route:** `id`, `jobId`, `waypoints[]`, `totalCost`, `landingZoneId?`.
+**Route:** `id`, `jobId`, `waypoints[]`, `totalCost`, `landingZoneId?`, `distanceMeters`, `elevationGainMeters`, `estimatedMinutes`, `legs[]`.
 
-A* cost (when you implement it): `cost = distance + (elevation_change * penalty_weight)`. Persist `totalCost` as the sum the algorithm used.
+**RouteLeg:** `kind`, `label`, `startIndex`, `endIndex`, `distanceMeters`, `elevationGainMeters`, `estimatedMinutes`.
+
+`totalCost` is the **search cost** the router minimized, not a distance. A* cost (when you implement it): `cost = distance + (elevation_change * penalty_weight)`; persist `totalCost` as the sum the algorithm used. Everything an operator reads comes from the measured fields instead:
+
+| Field | Meaning |
+| --- | --- |
+| `distanceMeters` | Ground distance along `waypoints` |
+| `elevationGainMeters` | Cumulative ascent only (descent is not subtracted) |
+| `estimatedMinutes` | Naismith: 12 min/km + 10 min per 100 m ascent, scaled by a per-leg terrain pace factor |
+
+`legs[]` partitions `waypoints` — legs are contiguous and share endpoints (`leg[n].endIndex == leg[n+1].startIndex`), the first starts at `0`, the last ends at `waypoints.length - 1`, and the leg totals sum to the route totals. Slice `waypoints[startIndex..endIndex]` to draw or highlight one leg; do not duplicate point data into the leg.
+
+Measurement helpers live in [`backend/services/gis/route_metrics.py`](../../backend/services/gis/route_metrics.py) (`build_leg`, `summarize`, `haversine_m`). A new `GisRouter` implementation should reuse them so the readouts stay consistent across routers.
 
 ## Service method signatures
 
