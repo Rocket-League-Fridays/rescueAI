@@ -4,6 +4,8 @@ export type ArtifactKind = "raw_video" | "frame" | "annotated_frame";
 
 export type DetectionClassName = "person" | "vehicle" | "other";
 
+export type RouteLegKind = "subject_link" | "off_trail" | "on_trail";
+
 export interface GeoPoint {
   lat: number;
   lng: number;
@@ -84,12 +86,27 @@ export interface RouteWaypoint {
   elevationMeters: number;
 }
 
+export interface RouteLeg {
+  kind: RouteLegKind;
+  label: string;
+  startIndex: number;
+  endIndex: number;
+  distanceMeters: number;
+  elevationGainMeters: number;
+  estimatedMinutes: number;
+}
+
 export interface Route {
   id: string;
   jobId: string;
   waypoints: RouteWaypoint[];
+  /** Search cost the router minimized (distance plus terrain penalties), not a distance. */
   totalCost: number;
   landingZoneId?: string | null;
+  distanceMeters: number;
+  elevationGainMeters: number;
+  estimatedMinutes: number;
+  legs: RouteLeg[];
 }
 
 export interface Job {
