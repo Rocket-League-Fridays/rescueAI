@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-tactical-950 text-olive-100 antialiased;
+}
+
+.leaflet-container {
+  background: #0b100d;
+  font-family: inherit;
+}

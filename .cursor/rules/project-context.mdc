@@ -1,0 +1,18 @@
+---
+description: RescueAI foundation — read docs/context before changing contracts or wiring
+alwaysApply: true
+---
+
+# RescueAI project context
+
+Before writing code, read `docs/context/README.md` and the docs it lists.
+
+This repo is a **foundation**: shared contracts, SQLite + local artifact store, FastAPI job machine, Next.js shell. CV/GIS/frame extraction are **stubs**.
+
+## Non-negotiables
+
+- Do not invent Job, Telemetry, Detection, LandingZone, Route, or Artifact shapes. Edit `backend/models/` and `frontend/src/types/telemetry.ts` together.
+- Depend on interfaces (`DaoFactory`, `ArtifactStore`, `CvPipeline`, `GisRouter`, `FrameExtractor`). Bind concretes only in `backend/main.py`.
+- Persist job `status` and `failureReason`. Never store video bytes in SQLite.
+- Do not add Docker, AWS, YOLO weights, or DEM clients unless the user asked for that WBS slice.
+- Frontend presenters stay React-free. Follow root `AGENTS.md` (DI, factories, MVP, structured JSON logs).
