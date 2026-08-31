@@ -10,11 +10,13 @@ Implement **your** stub. Do not rewrite another member’s interface or the job 
 
 - `backend/api/routes_telemetry.py`, `routes_jobs.py`, `dependencies.py`
 - `backend/core/logging.py`, `core/config.py`
-- `FrameExtractor` implementation (replace `StubFrameExtractor`)
-- SAHI windowing **as part of extraction or as helpers the CV pipeline calls** — agree with Member 2 so tiles are not invented twice
+- `OpenCvFrameExtractor` (already wired in `main.py`)
+- `SlidingWindowSahiTiler` — Member 2 **calls this**; do not invent a second windowing scheme
+- `IngestWatcher` + DJI SRT parser + `IngestLedger`
+- `PinholeGeoreferencer` (approximate `groundPoint` only)
 - `start_dev.sh` / env defaults if boot breaks
 
-**Do not** implement YOLO or A*. Persist frames as `Artifact(kind=frame)` via `ArtifactDao` + `ArtifactStore`.
+**Do not** implement YOLO or A*. Persist frames as `Artifact(kind=frame)` via `ArtifactDao` + `ArtifactStore`. Do not persist SAHI tiles.
 
 ## Member 2 — Computer vision
 

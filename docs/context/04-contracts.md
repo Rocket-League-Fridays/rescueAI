@@ -77,8 +77,9 @@ Bytes: `ArtifactStore.put/get/delete(storage_key)`. Keys must not start with `/`
 | `bbox` | **full 4K frame pixels**, not tile-local |
 | `confidence` | 0..1 |
 | `frameId` | optional artifact id of the source frame |
+| `groundPoint` | optional `{lat, lng}` — **approximate** pinhole projection (Member 1). Not DEM-accurate. |
 
-NMS + restitch happen **inside** `CvPipeline` before you return this list.
+NMS + restitch happen **inside** `CvPipeline` before you return this list. The worker then runs `DetectionGeoreferencer` before `DetectionDao.save_all`.
 
 ## LandingZone / Route (Member 3 output)
 
@@ -94,7 +95,9 @@ A* cost (when you implement it): `cost = distance + (elevation_change * penalty_
 
 ```text
 FrameExtractor.extract(video_artifact: Artifact) -> list[Artifact]
+SahiTiler.tile(image: ndarray) -> list[SahiTile]   # x, y, 640, 640, image (in-memory)
 CvPipeline.process(job: Job, frames: list[Artifact]) -> list[Detection]
+DetectionGeoreferencer.apply(detections, telemetry, frames, frame_poses?) -> list[Detection]
 GisRouter.route(job: Job, telemetry: DroneTelemetry) -> tuple[list[LandingZone], Route | None]
 ```
 
@@ -110,5 +113,6 @@ Assign new UUIDs inside your implementation. The worker saves lists via `save_al
 | `DetectionDao` | `save`, `save_all`, `get_by_id`, `list_by_job_id` |
 | `LandingZoneDao` | `save`, `save_all`, `get_by_id`, `list_by_job_id` |
 | `RouteDao` | `save`, `get_by_id`, `get_by_job_id` |
+| `IngestLedger` | `has_processed(sha256)`, `record(sha256, source_path, job_id)` |
 
 `DaoFactory` has one `create_*_dao()` per interface.

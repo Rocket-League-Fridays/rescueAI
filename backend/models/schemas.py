@@ -174,6 +174,7 @@ class DetectionOut(CamelModel):
     bbox: BoundingBoxSchema
     confidence: float = Field(ge=0, le=1)
     frame_id: str | None = None
+    ground_point: GeoPointSchema | None = None
 
     @classmethod
     def from_domain(cls, detection: Detection) -> Self:
@@ -184,6 +185,11 @@ class DetectionOut(CamelModel):
             bbox=BoundingBoxSchema.from_domain(detection.bbox),
             confidence=detection.confidence,
             frame_id=detection.frame_id,
+            ground_point=(
+                None
+                if detection.ground_point is None
+                else GeoPointSchema.from_domain(detection.ground_point)
+            ),
         )
 
 

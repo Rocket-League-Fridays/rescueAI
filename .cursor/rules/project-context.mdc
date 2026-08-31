@@ -7,7 +7,7 @@ alwaysApply: true
 
 Before writing code, read `docs/context/README.md` and the docs it lists.
 
-This repo is a **foundation**: shared contracts, SQLite + local artifact store, FastAPI job machine, Next.js shell. CV/GIS/frame extraction are **stubs**.
+This repo is a **foundation**: shared contracts, SQLite + local artifact store, FastAPI job machine, Next.js shell. Frame extraction, SAHI tiling, watch-folder ingest, and pinhole georeference are **real**. CV and GIS are still **stubs**.
 
 ## Non-negotiables
 

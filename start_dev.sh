@@ -29,7 +29,9 @@ fi
 
 export SAR_DATABASE_PATH="${SAR_DATABASE_PATH:-${BACKEND_DIR}/data/sar.db}"
 export SAR_ARTIFACTS_DIR="${SAR_ARTIFACTS_DIR:-${BACKEND_DIR}/data/artifacts}"
+export SAR_INGEST_DIR="${SAR_INGEST_DIR:-${BACKEND_DIR}/data/inbox}"
 export NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:8000}"
+mkdir -p "${SAR_INGEST_DIR}" "${SAR_ARTIFACTS_DIR}"
 
 (
   cd "${BACKEND_DIR}"
@@ -46,5 +48,6 @@ FRONTEND_PID=$!
 echo "Backend:  http://localhost:8000"
 echo "Frontend: http://localhost:3000"
 echo "Docs:     http://localhost:8000/docs"
+echo "DJI drop: ${SAR_INGEST_DIR}"
 
 wait

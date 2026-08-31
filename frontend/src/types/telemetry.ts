@@ -64,6 +64,7 @@ export interface Detection {
   bbox: BoundingBox;
   confidence: number;
   frameId?: string | null;
+  groundPoint?: GeoPoint | null;
 }
 
 export interface LandingZone {

@@ -38,8 +38,16 @@ Optional auth: `X-API-Key` when `SAR_API_KEY` is set.
 
 ### Job worker
 
-- [`backend/tasks/async_workers.py`](../../backend/tasks/async_workers.py) — `processing` → stubs → `completed` or `failed` with `failure_reason`
+- [`backend/tasks/async_workers.py`](../../backend/tasks/async_workers.py) — `processing` → extract → CV → georeference → GIS → `completed` or `failed` with `failure_reason`
 - Structured JSON logs (`event=job_completed` / `job_failed`)
+
+### Video ingest (Member 1 — real)
+
+- [`OpenCvFrameExtractor`](../../backend/services/ingest/opencv_frame_extractor.py) — strided JPEG frames via `ArtifactStore` / `ArtifactDao`
+- [`SlidingWindowSahiTiler`](../../backend/services/ingest/sahi_tiler.py) — in-memory 640×640 overlapping tiles for Member 2 (not persisted)
+- [`IngestWatcher`](../../backend/services/ingest/folder_watcher.py) — polls `SAR_INGEST_DIR`, debounce, SHA-256 ledger
+- DJI `.SRT` parser → job telemetry; else `SAR_DEFAULT_*`
+- [`PinholeGeoreferencer`](../../backend/services/ingest/pinhole_georeferencer.py) — optional `groundPoint` on detections (approximate)
 
 ### Frontend shell
 
@@ -50,7 +58,7 @@ Optional auth: `X-API-Key` when `SAR_API_KEY` is set.
 - `TacticalMap` — Leaflet OSM, drone `CircleMarker`, empty route/LZ overlays
 - Submit button posts **sample Provo-area telemetry** (hardcoded in `page.tsx`)
 
-### Tests (pytest, 6 passing)
+### Tests (pytest)
 
 - Invalid telemetry → 422
 - Valid telemetry → job created, `queued`
@@ -63,9 +71,10 @@ Optional auth: `X-API-Key` when `SAR_API_KEY` is set.
 
 | Interface | Stub | Returns today |
 | --- | --- | --- |
-| `FrameExtractor` | `services/stubs/frame_extractor.py` | `[]` |
 | `CvPipeline` | `services/stubs/cv_pipeline.py` | `[]` |
 | `GisRouter` | `services/stubs/gis_routing.py` | `[], None` |
+
+`FrameExtractor` is **no longer a stub** (`OpenCvFrameExtractor`). `StubFrameExtractor` remains only as a test double if needed.
 
 A job **still completes**. The dashboard will show `completed` with zero detections, zero LZs, no route. That is expected.
 
@@ -77,7 +86,7 @@ A job **still completes**. The dashboard will show `completed` with zero detecti
 
 ## Not in the repo
 
-YOLO11 / VisDrone weights, SAHI windowing, NMS, OpenCV frame grab, OpenTopography / USGS 3DEP client, RichDEM slope, A*, Mapbox tokens, Docker, AWS, OpenAPI codegen.
+YOLO11 / VisDrone weights, NMS, restitch, OpenTopography / USGS 3DEP client, RichDEM slope, A*, live DJI downlink, Mapbox tokens, Docker, AWS, OpenAPI codegen.
 
 ## Smoke check (already verified once)
 

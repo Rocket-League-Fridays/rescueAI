@@ -84,6 +84,7 @@ class Detection:
     bbox: BoundingBox
     confidence: float
     frame_id: str | None = None
+    ground_point: GeoPoint | None = None
 
 
 @dataclass

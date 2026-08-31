@@ -77,3 +77,11 @@ These were agreed while scaffolding. Do not silently reverse them.
 ## D12 — Repo hosting
 
 **Decision:** GitHub org `Rocket-League-Fridays`, repo `rescueAI`, private (matches other org repos).
+
+## D13 — Recorded DJI ingest, not live radio
+
+**Decision:** Watch `data/inbox/` for Mini 4K MP4/MOV (plus sibling SRT). Dashboard upload reuses the same `JobProcessor`. No DJI SDK / RTMP in this pass.
+
+## D14 — Approximate person coordinates
+
+**Decision:** After CV, `PinholeGeoreferencer` writes optional `Detection.groundPoint` using job (or SRT-derived) telemetry and camera HFOV. Flat earth, not DEM. Member 3 can replace this later with terrain ray-cast without changing the JSON field.

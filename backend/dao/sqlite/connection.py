@@ -61,7 +61,16 @@ CREATE TABLE IF NOT EXISTS detections (
     bbox_height REAL NOT NULL,
     confidence REAL NOT NULL,
     frame_id TEXT,
+    ground_lat REAL,
+    ground_lng REAL,
     FOREIGN KEY (job_id) REFERENCES jobs(id)
+);
+
+CREATE TABLE IF NOT EXISTS ingest_ledger (
+    sha256 TEXT PRIMARY KEY,
+    source_path TEXT NOT NULL,
+    job_id TEXT NOT NULL,
+    ingested_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS landing_zones (
@@ -121,3 +130,11 @@ class SqliteConnectionProvider:
     def _initialize_schema(self) -> None:
         with self.connect() as connection:
             connection.executescript(SCHEMA_SQL)
+            self._migrate_detections(connection)
+
+    def _migrate_detections(self, connection: sqlite3.Connection) -> None:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(detections)")}
+        if "ground_lat" not in columns:
+            connection.execute("ALTER TABLE detections ADD COLUMN ground_lat REAL")
+        if "ground_lng" not in columns:
+            connection.execute("ALTER TABLE detections ADD COLUMN ground_lng REAL")

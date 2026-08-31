@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dao.interface.detection_dao import DetectionDao
 from dao.sqlite.connection import SqliteConnectionProvider
-from models.domain import BoundingBox, Detection, DetectionClassName
+from models.domain import BoundingBox, Detection, DetectionClassName, GeoPoint
 
 
 class SqliteDetectionDao(DetectionDao):
@@ -20,8 +20,8 @@ class SqliteDetectionDao(DetectionDao):
                 """
                 INSERT INTO detections (
                     id, job_id, class_name, bbox_x, bbox_y, bbox_width, bbox_height,
-                    confidence, frame_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    confidence, frame_id, ground_lat, ground_lng
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
@@ -34,6 +34,8 @@ class SqliteDetectionDao(DetectionDao):
                         detection.bbox.height,
                         detection.confidence,
                         detection.frame_id,
+                        None if detection.ground_point is None else detection.ground_point.lat,
+                        None if detection.ground_point is None else detection.ground_point.lng,
                     )
                     for detection in detections
                 ],
@@ -70,4 +72,13 @@ class SqliteDetectionDao(DetectionDao):
             ),
             confidence=row["confidence"],
             frame_id=row["frame_id"],
+            ground_point=_ground_point_from_row(row),
         )
+
+
+def _ground_point_from_row(row: object) -> GeoPoint | None:
+    lat = row["ground_lat"]
+    lng = row["ground_lng"]
+    if lat is None or lng is None:
+        return None
+    return GeoPoint(lat=lat, lng=lng)

@@ -17,7 +17,7 @@ You are joining a **foundation-only** Search and Rescue (SAR) monorepo. Four peo
 1. Read [01-decisions.md](01-decisions.md) and [03-whats-built.md](03-whats-built.md).
 2. Read [05-wbs-ownership.md](05-wbs-ownership.md) and open only your interface + stub.
 3. Run `./start_dev.sh` or `cd backend && pytest`.
-4. Hit `POST /telemetry` (see [03-whats-built.md](03-whats-built.md)) so you have seen a real job complete.
+4. Hit `POST /telemetry` (see [03-whats-built.md](03-whats-built.md)) or drop a Mini 4K MP4 into `backend/data/inbox/` so you have seen a real job complete.
 
 ## How to add your implementation
 

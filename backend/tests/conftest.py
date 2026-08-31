@@ -12,6 +12,8 @@ def client(tmp_path: Path) -> TestClient:
     settings = Settings(
         database_path=str(tmp_path / "sar.db"),
         artifacts_dir=str(tmp_path / "artifacts"),
+        ingest_dir=str(tmp_path / "inbox"),
+        ingest_watch_enabled=False,
         api_key=None,
     )
     app = create_app(settings)

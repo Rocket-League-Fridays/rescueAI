@@ -3,6 +3,7 @@ from __future__ import annotations
 from dao.interface.artifact_dao import ArtifactDao
 from dao.interface.dao_factory import DaoFactory
 from dao.interface.detection_dao import DetectionDao
+from dao.interface.ingest_ledger import IngestLedger
 from dao.interface.job_dao import JobDao
 from dao.interface.landing_zone_dao import LandingZoneDao
 from dao.interface.route_dao import RouteDao
@@ -10,6 +11,7 @@ from dao.interface.telemetry_dao import TelemetryDao
 from dao.sqlite.artifact_dao import SqliteArtifactDao
 from dao.sqlite.connection import SqliteConnectionProvider
 from dao.sqlite.detection_dao import SqliteDetectionDao
+from dao.sqlite.ingest_ledger import SqliteIngestLedger
 from dao.sqlite.job_dao import SqliteJobDao
 from dao.sqlite.landing_zone_dao import SqliteLandingZoneDao
 from dao.sqlite.route_dao import SqliteRouteDao
@@ -42,3 +44,6 @@ class SqliteDaoFactory(DaoFactory):
 
     def create_route_dao(self) -> RouteDao:
         return SqliteRouteDao(self._connections)
+
+    def create_ingest_ledger(self) -> IngestLedger:
+        return SqliteIngestLedger(self._connections)

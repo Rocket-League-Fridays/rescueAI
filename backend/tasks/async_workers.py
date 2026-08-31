@@ -8,6 +8,7 @@ from dao.interface.dao_factory import DaoFactory
 from models.domain import Artifact, JobStatus
 from services.interface.cv_pipeline import CvPipeline
 from services.interface.frame_extractor import FrameExtractor
+from services.interface.georeferencer import DetectionGeoreferencer
 from services.interface.gis_router import GisRouter
 
 logger = logging.getLogger(__name__)
@@ -20,11 +21,13 @@ class JobProcessor:
         frame_extractor: FrameExtractor,
         cv_pipeline: CvPipeline,
         gis_router: GisRouter,
+        georeferencer: DetectionGeoreferencer,
     ) -> None:
         self._dao_factory = dao_factory
         self._frame_extractor = frame_extractor
         self._cv_pipeline = cv_pipeline
         self._gis_router = gis_router
+        self._georeferencer = georeferencer
 
     def process_job(self, job_id: str) -> None:
         started = time.perf_counter()
@@ -44,15 +47,17 @@ class JobProcessor:
         try:
             frames = self._extract_frames(job.video_artifact_id)
             detections = self._cv_pipeline.process(job, frames)
-            if detections:
-                self._dao_factory.create_detection_dao().save_all(detections)
-                job.detection_ids = [detection.id for detection in detections]
 
             telemetry = self._dao_factory.create_telemetry_dao().get_by_id(job.telemetry_id)
             if telemetry is None:
                 raise ValueError(
                     f"Failed to process job {job_id}: telemetry {job.telemetry_id} not found"
                 )
+
+            if detections:
+                detections = self._georeferencer.apply(detections, telemetry, frames)
+                self._dao_factory.create_detection_dao().save_all(detections)
+                job.detection_ids = [detection.id for detection in detections]
 
             landing_zones, route = self._gis_router.route(job, telemetry)
             if landing_zones:
@@ -105,8 +110,11 @@ class JobProcessor:
 
 def _classify_failure(exc: Exception) -> str:
     message = str(exc)
-    if "telemetry" in message.lower():
+    lowered = message.lower()
+    if "unreadable" in lowered:
+        return f"unreadable_video: {message}"
+    if "telemetry" in lowered:
         return f"missing_telemetry: {message}"
-    if "artifact" in message.lower() or "video" in message.lower():
+    if "artifact" in lowered or "video" in lowered:
         return f"missing_artifact: {message}"
     return f"processing_error: {type(exc).__name__}: {message}"

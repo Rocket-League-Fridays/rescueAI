@@ -5,8 +5,8 @@ Do not pull these in “while you are here” unless the team explicitly expands
 ## Engines (WBS, later)
 
 - Downloading YOLO11 / VisDrone weights
-- SAHI 640×640 overlapping tiles (Member 1/2)
 - NMS and 4K restitch (Member 2)
+- Persisting SAHI tiles to disk (tiler is in-memory only)
 - OpenTopography or USGS 3DEP HTTP client
 - RichDEM slope rasters
 - 100×100 ft LZ scanner
