@@ -22,6 +22,8 @@ from models.domain import (
     JobStatus,
     LandingZone,
     Route,
+    RouteLeg,
+    RouteLegKind,
     RouteWaypoint,
     SituationAssessment,
     SubjectProfile,
@@ -241,12 +243,49 @@ class RouteWaypointSchema(CamelModel):
         )
 
 
+class RouteLegSchema(CamelModel):
+    kind: RouteLegKind
+    label: str
+    start_index: int = Field(ge=0)
+    end_index: int = Field(ge=0)
+    distance_meters: float = Field(ge=0)
+    elevation_gain_meters: float = Field(ge=0)
+    estimated_minutes: float = Field(ge=0)
+
+    def to_domain(self) -> RouteLeg:
+        return RouteLeg(
+            kind=self.kind,
+            label=self.label,
+            start_index=self.start_index,
+            end_index=self.end_index,
+            distance_meters=self.distance_meters,
+            elevation_gain_meters=self.elevation_gain_meters,
+            estimated_minutes=self.estimated_minutes,
+        )
+
+    @classmethod
+    def from_domain(cls, leg: RouteLeg) -> Self:
+        return cls(
+            kind=leg.kind,
+            label=leg.label,
+            start_index=leg.start_index,
+            end_index=leg.end_index,
+            distance_meters=leg.distance_meters,
+            elevation_gain_meters=leg.elevation_gain_meters,
+            estimated_minutes=leg.estimated_minutes,
+        )
+
+
 class RouteOut(CamelModel):
     id: str
     job_id: str
     waypoints: list[RouteWaypointSchema]
     total_cost: float
     landing_zone_id: str | None = None
+    distance_meters: float = Field(default=0.0, ge=0)
+    elevation_gain_meters: float = Field(default=0.0, ge=0)
+    estimated_minutes: float = Field(default=0.0, ge=0)
+    legs: list[RouteLegSchema] = Field(default_factory=list)
 
     @classmethod
     def from_domain(cls, route: Route) -> Self:
@@ -256,6 +295,10 @@ class RouteOut(CamelModel):
             waypoints=[RouteWaypointSchema.from_domain(w) for w in route.waypoints],
             total_cost=route.total_cost,
             landing_zone_id=route.landing_zone_id,
+            distance_meters=route.distance_meters,
+            elevation_gain_meters=route.elevation_gain_meters,
+            estimated_minutes=route.estimated_minutes,
+            legs=[RouteLegSchema.from_domain(leg) for leg in route.legs],
         )
 
 

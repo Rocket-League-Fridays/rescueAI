@@ -4,7 +4,7 @@ import json
 
 from dao.interface.route_dao import RouteDao
 from dao.sqlite.connection import SqliteConnectionProvider
-from models.domain import Route, RouteWaypoint
+from models.domain import Route, RouteLeg, RouteLegKind, RouteWaypoint
 
 
 class SqliteRouteDao(RouteDao):
@@ -22,11 +22,28 @@ class SqliteRouteDao(RouteDao):
                 for waypoint in route.waypoints
             ]
         )
+        legs_json = json.dumps(
+            [
+                {
+                    "kind": leg.kind.value,
+                    "label": leg.label,
+                    "start_index": leg.start_index,
+                    "end_index": leg.end_index,
+                    "distance_meters": leg.distance_meters,
+                    "elevation_gain_meters": leg.elevation_gain_meters,
+                    "estimated_minutes": leg.estimated_minutes,
+                }
+                for leg in route.legs
+            ]
+        )
         with self._connections.connect() as connection:
             connection.execute(
                 """
-                INSERT INTO routes (id, job_id, waypoints_json, total_cost, landing_zone_id)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO routes (
+                    id, job_id, waypoints_json, total_cost, landing_zone_id,
+                    distance_meters, elevation_gain_meters, estimated_minutes, legs_json
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     route.id,
@@ -34,6 +51,10 @@ class SqliteRouteDao(RouteDao):
                     waypoints_json,
                     route.total_cost,
                     route.landing_zone_id,
+                    route.distance_meters,
+                    route.elevation_gain_meters,
+                    route.estimated_minutes,
+                    legs_json,
                 ),
             )
 
@@ -59,6 +80,7 @@ class SqliteRouteDao(RouteDao):
 
     def _to_domain(self, row: object) -> Route:
         raw_waypoints = json.loads(row["waypoints_json"])
+        raw_legs = json.loads(row["legs_json"])
         return Route(
             id=row["id"],
             job_id=row["job_id"],
@@ -72,4 +94,19 @@ class SqliteRouteDao(RouteDao):
             ],
             total_cost=row["total_cost"],
             landing_zone_id=row["landing_zone_id"],
+            distance_meters=row["distance_meters"],
+            elevation_gain_meters=row["elevation_gain_meters"],
+            estimated_minutes=row["estimated_minutes"],
+            legs=[
+                RouteLeg(
+                    kind=RouteLegKind(leg["kind"]),
+                    label=leg["label"],
+                    start_index=leg["start_index"],
+                    end_index=leg["end_index"],
+                    distance_meters=leg["distance_meters"],
+                    elevation_gain_meters=leg["elevation_gain_meters"],
+                    estimated_minutes=leg["estimated_minutes"],
+                )
+                for leg in raw_legs
+            ],
         )
