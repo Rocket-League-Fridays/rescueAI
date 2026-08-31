@@ -1,5 +1,5 @@
 ---
-description: RescueAI foundation — read docs/context before changing contracts or wiring
+description: RescueAI SAR monorepo — read docs/context before changing contracts or wiring
 alwaysApply: true
 ---
 
@@ -7,12 +7,18 @@ alwaysApply: true
 
 Before writing code, read `docs/context/README.md` and the docs it lists.
 
-This repo is a **foundation**: shared contracts, SQLite + local artifact store, FastAPI job machine, Next.js shell. Frame extraction, SAHI tiling, watch-folder ingest, and pinhole georeference are **real**. CV and GIS are still **stubs**.
+This repo is past the scaffold stage. **Real:** shared contracts, SQLite + local artifact store, FastAPI job machine, frame extraction, SAHI tiling, watch-folder ingest, pinhole georeference, incident intake, YOLO11n person detection with HSV clothing match, situation assessment, and a synthetic-DEM Y-trail router that picks an LZ and a walk-back.
+
+`StubCvPipeline` (used when ultralytics is missing or `SAR_YOLO_ENABLED=false`) and `StubGisRouter` (test double) are fallbacks only — implement against the real classes, do not grow the stubs.
+
+**Not built yet:** A* over a real cost surface. The walk-back is currently a straight polyline through the subject, LZ, and nearest trail points.
+
+See [`docs/context/03-whats-built.md`](../../docs/context/03-whats-built.md) for the full inventory.
 
 ## Non-negotiables
 
-- Do not invent Job, Telemetry, Detection, LandingZone, Route, or Artifact shapes. Edit `backend/models/` and `frontend/src/types/telemetry.ts` together.
+- Do not invent Job, Telemetry, Detection, Incident, Situation, LandingZone, Route, or Artifact shapes. Edit `backend/models/`, `frontend/src/types/`, and the SQLite row mapping together, and update `docs/context/04-contracts.md` in the same change.
 - Depend on interfaces (`DaoFactory`, `ArtifactStore`, `CvPipeline`, `GisRouter`, `FrameExtractor`). Bind concretes only in `backend/main.py`.
 - Persist job `status` and `failureReason`. Never store video bytes in SQLite.
-- Do not add Docker, AWS, YOLO weights, or DEM clients unless the user asked for that WBS slice.
+- Do not add Docker, AWS, live 3DEP/Overpass DEM clients, live DJI downlink, or face ID unless the user asked for that WBS slice.
 - Frontend presenters stay React-free. Follow root `AGENTS.md` (DI, factories, MVP, structured JSON logs).
