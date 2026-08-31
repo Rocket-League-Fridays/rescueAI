@@ -67,6 +67,7 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 
 - [`ClothingScoringCvPipeline`](../../backend/services/cv/clothing_cv_pipeline.py) — SAHI tiles → person detector → restitch → NMS → HSV `clothingMatchScore`
 - [`UltralyticsPersonDetector`](../../backend/services/cv/ultralytics_detector.py) — YOLO11n, COCO person class
+- [`OpenCvDetectionEvidenceRenderer`](../../backend/services/cv/evidence_renderer.py) — persists the best source frame as an `annotated_frame` with full-frame box, score banner, and enlarged subject crop
 - If YOLO is disabled or import fails, `StubCvPipeline` is used (frames still extract)
 
 ### Situation (real)
@@ -81,9 +82,10 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 ### Frontend (Member 4)
 
 - Next.js App Router, TypeScript strict, Tailwind, dark tactical theme
-- `DashboardPresenter` + `DashboardView` — intake, demo fixture, refresh incident, attach sortie
-- `ApiClient` — incidents + jobs
-- `StreamViewer` — two labeled panes, no decoder
+- `DashboardPresenter` + `DashboardView` — intake, demo fixture, attach sortie, and poll queued/processing jobs through terminal status
+- `ApiClient` — incidents, jobs, and artifact content URLs
+- `StreamViewer` — real source and annotated evidence frames; explicit progress / no-detection / failure states
+- Dashboard upload accepts latitude, longitude, and AGL instead of silently using the Y trailhead
 - `TacticalMap` — trail + buffer, Josh pin, LZ polygon, walk-back route
 - Clothing-match alert when `clothingMatchScore` is high
 

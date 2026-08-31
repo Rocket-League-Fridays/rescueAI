@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { StreamViewer } from "@/components/StreamViewer";
 import { TacticalMap } from "@/components/TacticalMap";
@@ -16,8 +16,12 @@ export default function CommandDashboardPage() {
   const [transcript, setTranscript] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [sortieLat, setSortieLat] = useState("40.3885871");
+  const [sortieLng, setSortieLng] = useState("-111.5447068");
+  const [sortieAltitude, setSortieAltitude] = useState("40");
   const videoInputRef = useRef<HTMLInputElement>(null);
 
+  const apiClient = useMemo(() => createApiClient(), []);
   const presenter = useMemo(() => {
     const view: DashboardView = {
       setIsLoading,
@@ -26,16 +30,24 @@ export default function CommandDashboardPage() {
       displayIncident: (next) => {
         setIncident(next);
         setTranscript(next.transcript);
+        const trailStart = next.trailLine[0];
+        if (trailStart) {
+          setSortieLat(String(trailStart.lat));
+          setSortieLng(String(trailStart.lng));
+        }
       },
       displayJob: setJob,
       displayTranscriptDraft: setTranscript,
     };
-    return new DashboardPresenter(view, createApiClient());
-  }, []);
+    return new DashboardPresenter(view, apiClient);
+  }, [apiClient]);
+
+  useEffect(() => {
+    void presenter.resumeActiveIncident();
+  }, [presenter]);
 
   const clothingAlerts = (job?.detections ?? []).filter(
-    (detection) =>
-      detection.className === "person" && (detection.clothingMatchScore ?? 0) >= 0.12,
+    (detection) => detection.className === "person",
   );
 
   async function handleOpenIncident(event: FormEvent<HTMLFormElement>) {
@@ -46,7 +58,12 @@ export default function CommandDashboardPage() {
   async function handleAttachSortie(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const video = videoInputRef.current?.files?.[0];
-    const request = sortieRequest(incident);
+    const request = sortieRequest(
+      incident,
+      Number(sortieLat),
+      Number(sortieLng),
+      Number(sortieAltitude),
+    );
     await presenter.submitTelemetry(request, video);
     if (incident) {
       await presenter.refreshIncident(incident.id);
@@ -63,13 +80,17 @@ export default function CommandDashboardPage() {
             </p>
             <h1 className="text-lg font-semibold text-olive-50">Command dashboard</h1>
           </div>
-          <StatusBadge status={incident?.status ?? job?.status ?? "idle"} />
+          <StatusBadge status={job?.status ?? incident?.status ?? "idle"} />
         </div>
       </header>
 
       <main className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <StreamViewer jobId={job?.id} hasVideo={Boolean(job?.videoArtifactId)} />
+          <StreamViewer
+            job={job}
+            subjectName={incident?.subject.displayName}
+            artifactContentUrl={(artifactId) => apiClient.artifactContentUrl(artifactId)}
+          />
           <TacticalMap incident={incident} job={job} />
         </div>
 
@@ -116,7 +137,8 @@ export default function CommandDashboardPage() {
               3. Attach Mini 4K sortie
             </h2>
             <p className="text-xs text-olive-400">
-              Pre-recorded MP4 from the Y. Inbox drop also attaches to the open incident.
+              Upload a recorded MP4/MOV and its approximate drone position. Analysis usually
+              takes 30–60 seconds.
             </p>
             <input
               ref={videoInputRef}
@@ -124,12 +146,37 @@ export default function CommandDashboardPage() {
               accept="video/*"
               className="block w-full text-xs text-olive-200 file:mr-3 file:rounded file:border-0 file:bg-olive-800 file:px-2 file:py-1"
             />
+            <div className="grid grid-cols-2 gap-2">
+              <CoordinateInput
+                label="Latitude"
+                value={sortieLat}
+                onChange={setSortieLat}
+                step="0.0000001"
+              />
+              <CoordinateInput
+                label="Longitude"
+                value={sortieLng}
+                onChange={setSortieLng}
+                step="0.0000001"
+              />
+            </div>
+            <CoordinateInput
+              label="Drone height AGL (meters)"
+              value={sortieAltitude}
+              onChange={setSortieAltitude}
+              step="1"
+            />
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full rounded border border-olive-600 px-3 py-2 font-mono text-[10px] uppercase text-olive-100 disabled:opacity-50"
+              disabled={
+                isLoading ||
+                !Number.isFinite(Number(sortieLat)) ||
+                !Number.isFinite(Number(sortieLng)) ||
+                Number(sortieAltitude) <= 0
+              }
+              className="w-full rounded bg-amber-400 px-3 py-2 font-mono text-[10px] font-semibold uppercase text-tactical-950 disabled:opacity-50"
             >
-              Process video
+              {isLoading ? "Analyzing sortie…" : "Analyze video + locate subject"}
             </button>
             {incident ? (
               <button
@@ -167,8 +214,13 @@ export default function CommandDashboardPage() {
   );
 }
 
-function sortieRequest(incident: IncidentDetail | null): CreateJobRequest {
-  const start = incident?.trailLine[0] ?? { lat: 40.24555, lng: -111.62815 };
+function sortieRequest(
+  incident: IncidentDetail | null,
+  lat: number,
+  lng: number,
+  altitudeMeters: number,
+): CreateJobRequest {
+  const start = { lat, lng };
   return {
     incidentId: incident?.id,
     telemetry: {
@@ -177,12 +229,38 @@ function sortieRequest(incident: IncidentDetail | null): CreateJobRequest {
         southWest: { lat: start.lat - 0.01, lng: start.lng - 0.01 },
         northEast: { lat: start.lat + 0.01, lng: start.lng + 0.01 },
       },
-      altitudeMeters: 120,
-      headingDegrees: 45,
-      gimbal: { pitchDegrees: -45, yawDegrees: 0, rollDegrees: 0 },
+      altitudeMeters,
+      headingDegrees: 0,
+      gimbal: { pitchDegrees: -60, yawDegrees: 0, rollDegrees: 0 },
       timestampUtc: new Date().toISOString(),
     },
   };
+}
+
+function CoordinateInput({
+  label,
+  value,
+  onChange,
+  step,
+}: {
+  label: string;
+  value: string;
+  onChange(value: string): void;
+  step: string;
+}) {
+  return (
+    <label className="block font-mono text-[10px] uppercase tracking-wider text-olive-400">
+      {label}
+      <input
+        type="number"
+        required
+        value={value}
+        step={step}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded border border-olive-700 bg-tactical-800 px-2 py-2 text-xs text-olive-100"
+      />
+    </label>
+  );
 }
 
 function IncidentPanel({ incident }: { incident: IncidentDetail }) {
@@ -225,10 +303,11 @@ function PersonAlert({
   return (
     <div className="rounded-lg border border-amber-600 bg-amber-950/70 px-3 py-2">
       <p className="font-mono text-[10px] uppercase tracking-widest text-amber-300">
-        Subject match
+        Subject located
       </p>
       <p className="text-sm text-amber-100">
-        {incident?.subject.displayName ?? "Person"} · clothing{" "}
+        {incident?.subject.displayName ?? "Person"} · person{" "}
+        {(best.confidence * 100).toFixed(0)}% · clothing{" "}
         {((best.clothingMatchScore ?? 0) * 100).toFixed(0)}%
       </p>
     </div>

@@ -1,4 +1,9 @@
+import json
+from pathlib import Path
+
 from fastapi.testclient import TestClient
+
+from tests.video_fixtures import write_synthetic_mp4
 
 
 def test_create_job_rejects_invalid_telemetry(client: TestClient) -> None:
@@ -54,3 +59,31 @@ def test_get_job_returns_detail_after_create(
 def test_get_missing_job_returns_404(client: TestClient) -> None:
     response = client.get("/jobs/does-not-exist")
     assert response.status_code == 404
+
+
+def test_job_detail_lists_frames_and_serves_artifact_content(
+    client: TestClient,
+    valid_telemetry_payload: dict,
+    tmp_path: Path,
+) -> None:
+    video_path = write_synthetic_mp4(tmp_path / "sortie.mp4", frame_count=3)
+    telemetry = valid_telemetry_payload["telemetry"]
+    response = client.post(
+        "/telemetry/upload",
+        data={"telemetry": json.dumps(telemetry)},
+        files={"video": ("sortie.mp4", video_path.read_bytes(), "video/mp4")},
+    )
+    assert response.status_code == 201
+    detail = client.get(f"/jobs/{response.json()['id']}")
+    assert detail.status_code == 200
+    frames = [
+        artifact
+        for artifact in detail.json()["artifacts"]
+        if artifact["kind"] == "frame"
+    ]
+    assert frames
+
+    content = client.get(f"/artifacts/{frames[0]['id']}/content")
+    assert content.status_code == 200
+    assert content.headers["content-type"] == "image/jpeg"
+    assert content.content

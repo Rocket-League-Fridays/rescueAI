@@ -362,6 +362,7 @@ class SituationAssessmentOut(CamelModel):
 
 class JobDetailOut(JobOut):
     telemetry: DroneTelemetryOut | None = None
+    artifacts: list[ArtifactOut] = Field(default_factory=list)
     detections: list[DetectionOut] = Field(default_factory=list)
     landing_zones: list[LandingZoneOut] = Field(default_factory=list)
     route: RouteOut | None = None

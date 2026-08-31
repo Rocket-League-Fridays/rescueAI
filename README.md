@@ -42,7 +42,8 @@ Set `NEXT_PUBLIC_API_URL` if the API is not on `http://localhost:8000`.
 Copy a recorded Mini 4K `.mp4` / `.mov` (and the sibling `.SRT` if DJI Fly wrote one) into `backend/data/inbox/`. The watcher waits until the copy finishes, creates a job, extracts JPEG frames, and hands them to `CvPipeline`.
 
 - Telemetry comes from the SRT (mid-clip GPS/alt/gimbal) when present; otherwise `SAR_DEFAULT_LAT` / `SAR_DEFAULT_LNG`.
-- The same OpenCV extractor runs for dashboard `POST /telemetry/upload`.
+- The same OpenCV extractor runs for dashboard `POST /telemetry/upload`; dashboard latitude,
+  longitude, and AGL fields become the sortie telemetry.
 - Inbox jobs attach to the **open incident** (open one from the dashboard first).
 - Person coordinates (`groundPoint`) are a **flat-earth pinhole estimate**, not DEM-accurate.
 - Clothing match is HSV color overlap with the transcript — not face ID.
@@ -52,8 +53,8 @@ Copy a recorded Mini 4K `.mp4` / `.mov` (and the sibling `.SRT` if DJI Fly wrote
 
 1. `./start_dev.sh`
 2. **Load Josh / Y fixture** → **Open incident** — trail + ~80 m buffer on the map.
-3. Drop a pre-recorded Mini `DJI_*.MP4` + `.SRT` into `backend/data/inbox/`, or attach the file on the dashboard.
-4. Refresh the incident. High clothing-match score pins Josh; GIS draws an LZ and a walk-back onto the Y trail.
+3. Drop a pre-recorded Mini `DJI_*.MP4` + `.SRT` into `backend/data/inbox/`, or attach the file and coordinates on the dashboard.
+4. The dashboard polls the job through YOLO completion, then shows the winning source frame and a boxed **subject found** evidence image. GIS draws the pin, LZ, and walk-back.
 
 Committed demo files live in `backend/demo/` (`josh_y_trail_transcript.txt`, `y_mountain_trail.geojson`). GIS uses a synthetic DEM around that corridor — no live 3DEP on stage. YOLO11n loads when `ultralytics` is installed (`SAR_YOLO_ENABLED=true`); otherwise frames still extract and GIS can still route from the drone fix.
 
