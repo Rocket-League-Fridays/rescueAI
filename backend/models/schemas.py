@@ -207,8 +207,11 @@ class LandingZoneOut(CamelModel):
     job_id: str
     centroid: GeoPointSchema
     bounds: GeoBoundsSchema
-    slope_degrees: float
-    area_sq_ft: float
+    max_slope_degrees: float
+    area_sq_ft: float = Field(ge=0)
+    canopy_fraction: float | None = Field(default=None, ge=0, le=1)
+    suitability_score: float = Field(default=0.0, ge=0, le=1)
+    notes: str = ""
 
     @classmethod
     def from_domain(cls, landing_zone: LandingZone) -> Self:
@@ -217,8 +220,11 @@ class LandingZoneOut(CamelModel):
             job_id=landing_zone.job_id,
             centroid=GeoPointSchema.from_domain(landing_zone.centroid),
             bounds=GeoBoundsSchema.from_domain(landing_zone.bounds),
-            slope_degrees=landing_zone.slope_degrees,
+            max_slope_degrees=landing_zone.max_slope_degrees,
             area_sq_ft=landing_zone.area_sq_ft,
+            canopy_fraction=landing_zone.canopy_fraction,
+            suitability_score=landing_zone.suitability_score,
+            notes=landing_zone.notes,
         )
 
 

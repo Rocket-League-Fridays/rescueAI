@@ -24,6 +24,11 @@ _MAX_SLOPE_DEG = 8.0
 _MAX_CANOPY = 0.55
 _LZ_HALF_M = 15.0
 _TRAIL_TAIL_POINTS = 5
+_SQ_FT_PER_SQ_M = 10.763910416709722
+_LZ_NOTES = (
+    "Slope-only suitability from a synthetic DEM. Canopy over the pad and "
+    "approach/departure clearance are not yet assessed."
+)
 
 
 class YTrailGisRouter(GisRouter):
@@ -43,7 +48,7 @@ class YTrailGisRouter(GisRouter):
         lz_cell = _best_lz(grid, subject, canopy)
         if lz_cell is None:
             return [], None
-        landing_zone = _to_landing_zone(job.id, lz_cell, canopy)
+        landing_zone = _to_landing_zone(job.id, lz_cell, grid)
         route = _walk_back(job.id, subject, lz_cell.centroid, trail, landing_zone.id, grid)
         return [landing_zone], route
 
@@ -92,20 +97,51 @@ def _best_lz(cells: list[_Cell], subject: GeoPoint, canopy: float) -> _Cell | No
     return min(eligible, key=lambda cell: haversine_m(cell.centroid, subject) + cell.slope * 8)
 
 
-def _to_landing_zone(job_id: str, cell: _Cell, canopy: float) -> LandingZone:
+def _to_landing_zone(job_id: str, cell: _Cell, cells: list[_Cell]) -> LandingZone:
     dlat = _LZ_HALF_M / _METERS_PER_DEG_LAT
     dlng = _LZ_HALF_M / (_METERS_PER_DEG_LAT * max(0.2, math.cos(math.radians(cell.centroid.lat))))
+    bounds = GeoBounds(
+        south_west=GeoPoint(lat=cell.centroid.lat - dlat, lng=cell.centroid.lng - dlng),
+        north_east=GeoPoint(lat=cell.centroid.lat + dlat, lng=cell.centroid.lng + dlng),
+    )
+    max_slope = _max_slope_in_bounds(cells, bounds, cell.slope)
     return LandingZone(
         id=str(uuid4()),
         job_id=job_id,
         centroid=cell.centroid,
-        bounds=GeoBounds(
-            south_west=GeoPoint(lat=cell.centroid.lat - dlat, lng=cell.centroid.lng - dlng),
-            north_east=GeoPoint(lat=cell.centroid.lat + dlat, lng=cell.centroid.lng + dlng),
-        ),
-        slope_degrees=cell.slope,
-        area_sq_ft=100.0 * 100.0,
+        bounds=bounds,
+        max_slope_degrees=max_slope,
+        area_sq_ft=_bounds_area_sq_ft(bounds),
+        canopy_fraction=None,
+        suitability_score=_slope_suitability(max_slope),
+        notes=_LZ_NOTES,
     )
+
+
+def _max_slope_in_bounds(cells: list[_Cell], bounds: GeoBounds, fallback: float) -> float:
+    inside = [
+        cell.slope
+        for cell in cells
+        if bounds.south_west.lat <= cell.centroid.lat <= bounds.north_east.lat
+        and bounds.south_west.lng <= cell.centroid.lng <= bounds.north_east.lng
+    ]
+    return max(inside) if inside else fallback
+
+
+def _bounds_area_sq_ft(bounds: GeoBounds) -> float:
+    height_m = haversine_m(
+        bounds.south_west,
+        GeoPoint(lat=bounds.north_east.lat, lng=bounds.south_west.lng),
+    )
+    width_m = haversine_m(
+        bounds.south_west,
+        GeoPoint(lat=bounds.south_west.lat, lng=bounds.north_east.lng),
+    )
+    return height_m * width_m * _SQ_FT_PER_SQ_M
+
+
+def _slope_suitability(max_slope_degrees: float) -> float:
+    return max(0.0, min(1.0, 1.0 - max_slope_degrees / _MAX_SLOPE_DEG))
 
 
 def _walk_back(

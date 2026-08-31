@@ -80,7 +80,8 @@ export default function TacticalMapCanvas({ incident, job }: TacticalMapCanvasPr
           pathOptions={{ color: "#c4d67c", weight: 2 }}
         >
           <Popup>
-            LZ {zone.id.slice(0, 8)} · {zone.slopeDegrees.toFixed(1)}° · {zone.areaSqFt} ft²
+            LZ {zone.id.slice(0, 8)} · max {zone.maxSlopeDegrees.toFixed(1)}° ·{" "}
+            {zone.areaSqFt.toFixed(0)} ft²
           </Popup>
         </Polygon>
       ))}

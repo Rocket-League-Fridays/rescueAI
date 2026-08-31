@@ -101,12 +101,25 @@ class Detection:
 
 @dataclass
 class LandingZone:
+    """A candidate helicopter landing site.
+
+    `max_slope_degrees` is the steepest slope anywhere inside `bounds`, not the
+    slope at `centroid` — a pad is only as landable as its worst corner.
+    `canopy_fraction` is None when no overhead-cover estimate covers this site,
+    which is different from a measured zero. `suitability_score` orders
+    candidates and `notes` records which criteria that score actually accounts
+    for, so an operator is never guessing what was checked.
+    """
+
     id: str
     job_id: str
     centroid: GeoPoint
     bounds: GeoBounds
-    slope_degrees: float
+    max_slope_degrees: float
     area_sq_ft: float
+    canopy_fraction: float | None = None
+    suitability_score: float = 0.0
+    notes: str = ""
 
 
 @dataclass(frozen=True)

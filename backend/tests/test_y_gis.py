@@ -11,7 +11,7 @@ from models.domain import (
     SituationAssessment,
 )
 from services.gis.route_metrics import summarize
-from services.gis.y_trail_router import YTrailGisRouter
+from services.gis.y_trail_router import YTrailGisRouter, _build_dem, _slope_suitability
 from services.intake.incident_service import resolve_demo_dir
 from services.intake.trail_catalog import TrailCatalog
 
@@ -95,3 +95,42 @@ def test_y_router_does_not_emit_duplicate_consecutive_waypoints() -> None:
     assert route is not None
     for previous, current in zip(route.waypoints, route.waypoints[1:]):
         assert (previous.lat, previous.lng) != (current.lat, current.lng)
+
+
+def test_landing_zone_reports_measured_area_not_a_constant() -> None:
+    job, telemetry, situation, trail = _scenario()
+    zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
+    zone = zones[0]
+    assert zone.area_sq_ft != 10_000.0
+    assert 9_000 < zone.area_sq_ft < 10_500
+
+
+def test_landing_zone_slope_is_the_worst_slope_in_the_footprint() -> None:
+    job, telemetry, situation, trail = _scenario()
+    zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
+    zone = zones[0]
+    cells = _build_dem(trail, situation.ground_point)
+    inside = [
+        cell.slope
+        for cell in cells
+        if zone.bounds.south_west.lat <= cell.centroid.lat <= zone.bounds.north_east.lat
+        and zone.bounds.south_west.lng <= cell.centroid.lng <= zone.bounds.north_east.lng
+    ]
+    assert zone.max_slope_degrees == max(inside)
+
+
+def test_landing_zone_leaves_canopy_unknown_rather_than_borrowing_the_subjects() -> None:
+    job, telemetry, situation, trail = _scenario()
+    zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
+    assert zones[0].canopy_fraction is None
+    assert situation.canopy_fraction == 0.2
+
+
+def test_landing_zone_score_is_bounded_and_falls_as_slope_rises() -> None:
+    job, telemetry, situation, trail = _scenario()
+    zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
+    zone = zones[0]
+    assert 0.0 <= zone.suitability_score <= 1.0
+    assert zone.suitability_score == _slope_suitability(zone.max_slope_degrees)
+    assert _slope_suitability(2.0) > _slope_suitability(7.0)
+    assert zone.notes != ""

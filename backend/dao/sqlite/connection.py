@@ -109,8 +109,11 @@ CREATE TABLE IF NOT EXISTS landing_zones (
     bounds_sw_lng REAL NOT NULL,
     bounds_ne_lat REAL NOT NULL,
     bounds_ne_lng REAL NOT NULL,
-    slope_degrees REAL NOT NULL,
+    max_slope_degrees REAL NOT NULL,
     area_sq_ft REAL NOT NULL,
+    canopy_fraction REAL,
+    suitability_score REAL NOT NULL DEFAULT 0,
+    notes TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (job_id) REFERENCES jobs(id)
 );
 
@@ -176,6 +179,18 @@ class SqliteConnectionProvider:
         job_cols = {row[1] for row in connection.execute("PRAGMA table_info(jobs)")}
         if "incident_id" not in job_cols:
             connection.execute("ALTER TABLE jobs ADD COLUMN incident_id TEXT")
+        lz_cols = {row[1] for row in connection.execute("PRAGMA table_info(landing_zones)")}
+        if "max_slope_degrees" not in lz_cols and "slope_degrees" in lz_cols:
+            connection.execute(
+                "ALTER TABLE landing_zones RENAME COLUMN slope_degrees TO max_slope_degrees"
+            )
+        for column, ddl in (
+            ("canopy_fraction", "REAL"),
+            ("suitability_score", "REAL NOT NULL DEFAULT 0"),
+            ("notes", "TEXT NOT NULL DEFAULT ''"),
+        ):
+            if column not in lz_cols:
+                connection.execute(f"ALTER TABLE landing_zones ADD COLUMN {column} {ddl}")
         route_cols = {row[1] for row in connection.execute("PRAGMA table_info(routes)")}
         for column, ddl in (
             ("distance_meters", "REAL NOT NULL DEFAULT 0"),
