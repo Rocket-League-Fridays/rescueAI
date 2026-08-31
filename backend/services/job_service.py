@@ -13,6 +13,7 @@ from models.schemas import (
     JobOut,
     LandingZoneOut,
     RouteOut,
+    SituationAssessmentOut,
 )
 from storage.interface.artifact_store import ArtifactStore
 
@@ -46,6 +47,7 @@ class JobService:
             created_at=now,
             updated_at=now,
             telemetry_id=telemetry_id,
+            incident_id=self._resolve_incident_id(request.incident_id),
         )
         self._dao_factory.create_job_dao().save(job)
 
@@ -62,6 +64,12 @@ class JobService:
 
         return job
 
+    def _resolve_incident_id(self, requested: str | None) -> str | None:
+        if requested:
+            return requested
+        open_incident = self._dao_factory.create_incident_dao().get_open()
+        return None if open_incident is None else open_incident.id
+
     def get_job(self, job_id: str) -> Job | None:
         return self._dao_factory.create_job_dao().get_by_id(job_id)
 
@@ -74,6 +82,7 @@ class JobService:
         detections = self._dao_factory.create_detection_dao().list_by_job_id(job_id)
         landing_zones = self._dao_factory.create_landing_zone_dao().list_by_job_id(job_id)
         route = self._dao_factory.create_route_dao().get_by_job_id(job_id)
+        situation = self._dao_factory.create_situation_dao().get_by_job_id(job_id)
 
         detail = JobOut.from_domain(job)
         return JobDetailOut(
@@ -84,6 +93,7 @@ class JobService:
                 LandingZoneOut.from_domain(landing_zone) for landing_zone in landing_zones
             ],
             route=None if route is None else RouteOut.from_domain(route),
+            situation=None if situation is None else SituationAssessmentOut.from_domain(situation),
         )
 
     def _store_video(

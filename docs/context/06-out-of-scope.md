@@ -1,16 +1,22 @@
-# Out of scope (this foundation)
+# Out of scope (this foundation / talk)
 
 Do not pull these in “while you are here” unless the team explicitly expands the milestone.
 
-## Engines (WBS, later)
+## Not for the talk
 
-- Downloading YOLO11 / VisDrone weights
-- NMS and 4K restitch (Member 2)
+- Live DJI downlink / SDK / RTMP
+- Face ID or re-identification
+- AllTrails (use committed OSM-derived GeoJSON only)
+- On-stage live 3DEP or Overpass as the only GIS path
+- Full statewide trail graph
+- Training a custom VisDrone model unless it is already working a day early
+
+## Still later
+
 - Persisting SAHI tiles to disk (tiler is in-memory only)
-- OpenTopography or USGS 3DEP HTTP client
-- RichDEM slope rasters
-- 100×100 ft LZ scanner
-- Terrain A* (`distance + elevation_change * penalty_weight`)
+- OpenTopography or USGS 3DEP HTTP client as the primary path
+- RichDEM / rasterio production slope rasters
+- Helicopter-scale A* (demo walk-back is subject → LZ → trail → trailhead)
 - Live video streaming / frame websocket
 - Mapbox (Leaflet + OSM is the current map)
 

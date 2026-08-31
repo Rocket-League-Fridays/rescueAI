@@ -1,8 +1,9 @@
+from datetime import datetime, timezone
 from pathlib import Path
 
 from core.config import Settings
 from dao.sqlite.sqlite_dao_factory import SqliteDaoFactory
-from models.domain import ArtifactKind
+from models.domain import ArtifactKind, Incident, IncidentStatus, SubjectProfile
 from services.ingest.folder_watcher import IngestWatcher
 from services.ingest.opencv_frame_extractor import OpenCvFrameExtractor
 from services.ingest.pinhole_georeferencer import PinholeGeoreferencer
@@ -47,6 +48,28 @@ def test_watcher_uses_sibling_srt_for_telemetry(tmp_path: Path) -> None:
     assert telemetry.altitude_meters == 125.5
 
 
+def test_watcher_attaches_open_incident(tmp_path: Path) -> None:
+    settings, watcher, factory = _build_watcher(tmp_path)
+    now = datetime.now(timezone.utc)
+    incident = Incident(
+        id="inc-josh",
+        transcript="Josh is lost on the Y trail wearing a red jacket.",
+        subject=SubjectProfile(display_name="Josh", clothing_colors=["red"]),
+        trail_name="Y Mountain Trail",
+        trail_line=[],
+        status=IncidentStatus.OPEN,
+        created_at=now,
+        updated_at=now,
+    )
+    factory.create_incident_dao().save(incident)
+    write_synthetic_mp4(Path(settings.ingest_dir) / "DJI_0003.MP4", frame_count=2)
+
+    [job_id] = watcher.poll_once()
+    job = factory.create_job_dao().get_by_id(job_id)
+    assert job is not None
+    assert job.incident_id == "inc-josh"
+
+
 def _build_watcher(tmp_path: Path) -> tuple[Settings, IngestWatcher, SqliteDaoFactory]:
     settings = Settings(
         database_path=str(tmp_path / "sar.db"),
@@ -78,5 +101,6 @@ def _build_watcher(tmp_path: Path) -> tuple[Settings, IngestWatcher, SqliteDaoFa
         job_service=JobService(dao_factory=factory, artifact_store=store),
         job_processor=processor,
         ledger=factory.create_ingest_ledger(),
+        incident_dao=factory.create_incident_dao(),
     )
     return settings, watcher, factory

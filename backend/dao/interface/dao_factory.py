@@ -2,10 +2,12 @@ from abc import ABC, abstractmethod
 
 from dao.interface.artifact_dao import ArtifactDao
 from dao.interface.detection_dao import DetectionDao
+from dao.interface.incident_dao import IncidentDao
 from dao.interface.ingest_ledger import IngestLedger
 from dao.interface.job_dao import JobDao
 from dao.interface.landing_zone_dao import LandingZoneDao
 from dao.interface.route_dao import RouteDao
+from dao.interface.situation_dao import SituationDao
 from dao.interface.telemetry_dao import TelemetryDao
 
 
@@ -36,4 +38,12 @@ class DaoFactory(ABC):
 
     @abstractmethod
     def create_ingest_ledger(self) -> IngestLedger:
+        raise NotImplementedError
+
+    @abstractmethod
+    def create_incident_dao(self) -> IncidentDao:
+        raise NotImplementedError
+
+    @abstractmethod
+    def create_situation_dao(self) -> SituationDao:
         raise NotImplementedError

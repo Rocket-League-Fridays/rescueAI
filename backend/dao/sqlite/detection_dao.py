@@ -20,8 +20,8 @@ class SqliteDetectionDao(DetectionDao):
                 """
                 INSERT INTO detections (
                     id, job_id, class_name, bbox_x, bbox_y, bbox_width, bbox_height,
-                    confidence, frame_id, ground_lat, ground_lng
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    confidence, frame_id, ground_lat, ground_lng, clothing_match_score
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
@@ -36,6 +36,7 @@ class SqliteDetectionDao(DetectionDao):
                         detection.frame_id,
                         None if detection.ground_point is None else detection.ground_point.lat,
                         None if detection.ground_point is None else detection.ground_point.lng,
+                        detection.clothing_match_score,
                     )
                     for detection in detections
                 ],
@@ -73,6 +74,7 @@ class SqliteDetectionDao(DetectionDao):
             confidence=row["confidence"],
             frame_id=row["frame_id"],
             ground_point=_ground_point_from_row(row),
+            clothing_match_score=_score_from_row(row),
         )
 
 
@@ -82,3 +84,11 @@ def _ground_point_from_row(row: object) -> GeoPoint | None:
     if lat is None or lng is None:
         return None
     return GeoPoint(lat=lat, lng=lng)
+
+
+def _score_from_row(row: object) -> float:
+    keys = row.keys()
+    if "clothing_match_score" not in keys:
+        return 0.0
+    value = row["clothing_match_score"]
+    return 0.0 if value is None else float(value)

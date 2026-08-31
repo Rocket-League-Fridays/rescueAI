@@ -16,11 +16,15 @@ from models.domain import (
     GeoBounds,
     GeoPoint,
     GimbalOrientation,
+    Incident,
+    IncidentStatus,
     Job,
     JobStatus,
     LandingZone,
     Route,
     RouteWaypoint,
+    SituationAssessment,
+    SubjectProfile,
 )
 
 
@@ -141,6 +145,7 @@ class DroneTelemetryOut(DroneTelemetryIn):
 
 class CreateJobRequest(CamelModel):
     telemetry: DroneTelemetryIn
+    incident_id: str | None = None
 
 
 class ArtifactOut(CamelModel):
@@ -175,6 +180,7 @@ class DetectionOut(CamelModel):
     confidence: float = Field(ge=0, le=1)
     frame_id: str | None = None
     ground_point: GeoPointSchema | None = None
+    clothing_match_score: float = Field(default=0.0, ge=0, le=1)
 
     @classmethod
     def from_domain(cls, detection: Detection) -> Self:
@@ -190,6 +196,7 @@ class DetectionOut(CamelModel):
                 if detection.ground_point is None
                 else GeoPointSchema.from_domain(detection.ground_point)
             ),
+            clothing_match_score=detection.clothing_match_score,
         )
 
 
@@ -263,6 +270,7 @@ class JobOut(CamelModel):
     detection_ids: list[str]
     landing_zone_ids: list[str]
     route_id: str | None = None
+    incident_id: str | None = None
 
     @classmethod
     def from_domain(cls, job: Job) -> Self:
@@ -277,6 +285,29 @@ class JobOut(CamelModel):
             detection_ids=list(job.detection_ids),
             landing_zone_ids=list(job.landing_zone_ids),
             route_id=job.route_id,
+            incident_id=job.incident_id,
+        )
+
+
+class SituationAssessmentOut(CamelModel):
+    id: str
+    job_id: str
+    incident_id: str | None = None
+    detection_id: str
+    ground_point: GeoPointSchema
+    canopy_fraction: float
+    notes: str = ""
+
+    @classmethod
+    def from_domain(cls, situation: SituationAssessment) -> Self:
+        return cls(
+            id=situation.id,
+            job_id=situation.job_id,
+            incident_id=situation.incident_id,
+            detection_id=situation.detection_id,
+            ground_point=GeoPointSchema.from_domain(situation.ground_point),
+            canopy_fraction=situation.canopy_fraction,
+            notes=situation.notes,
         )
 
 
@@ -285,6 +316,69 @@ class JobDetailOut(JobOut):
     detections: list[DetectionOut] = Field(default_factory=list)
     landing_zones: list[LandingZoneOut] = Field(default_factory=list)
     route: RouteOut | None = None
+    situation: SituationAssessmentOut | None = None
+
+
+class SubjectProfileSchema(CamelModel):
+    display_name: str
+    clothing_colors: list[str] = Field(default_factory=list)
+    notes: str = ""
+
+    def to_domain(self) -> SubjectProfile:
+        return SubjectProfile(
+            display_name=self.display_name,
+            clothing_colors=list(self.clothing_colors),
+            notes=self.notes,
+        )
+
+    @classmethod
+    def from_domain(cls, subject: SubjectProfile) -> Self:
+        return cls(
+            display_name=subject.display_name,
+            clothing_colors=list(subject.clothing_colors),
+            notes=subject.notes,
+        )
+
+
+class CreateIncidentRequest(CamelModel):
+    transcript: str = Field(min_length=1)
+
+
+class IncidentOut(CamelModel):
+    id: str
+    transcript: str
+    subject: SubjectProfileSchema
+    trail_name: str
+    trail_line: list[GeoPointSchema]
+    status: IncidentStatus
+    created_at: datetime
+    updated_at: datetime
+    situation_id: str | None = None
+    corridor_buffer_meters: float = 80
+
+    @classmethod
+    def from_domain(cls, incident: Incident, corridor_buffer_meters: float = 80) -> Self:
+        return cls(
+            id=incident.id,
+            transcript=incident.transcript,
+            subject=SubjectProfileSchema.from_domain(incident.subject),
+            trail_name=incident.trail_name,
+            trail_line=[GeoPointSchema.from_domain(point) for point in incident.trail_line],
+            status=incident.status,
+            created_at=incident.created_at,
+            updated_at=incident.updated_at,
+            situation_id=incident.situation_id,
+            corridor_buffer_meters=corridor_buffer_meters,
+        )
+
+
+class IncidentDetailOut(IncidentOut):
+    jobs: list[JobOut] = Field(default_factory=list)
+    situation: SituationAssessmentOut | None = None
+
+
+class FixtureTranscriptOut(CamelModel):
+    transcript: str
 
 
 class ErrorOut(CamelModel):

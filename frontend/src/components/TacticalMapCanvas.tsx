@@ -1,25 +1,34 @@
 "use client";
 
-import { CircleMarker, MapContainer, Polygon, Polyline, Popup, TileLayer } from "react-leaflet";
+import { Circle, CircleMarker, MapContainer, Polygon, Polyline, Popup, TileLayer } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-import type { JobDetail } from "@/types/telemetry";
+import type { IncidentDetail } from "@/types/incident";
+import type { Detection, JobDetail } from "@/types/telemetry";
 
 interface TacticalMapCanvasProps {
+  incident: IncidentDetail | null;
   job: JobDetail | null;
 }
 
-export default function TacticalMapCanvas({ job }: TacticalMapCanvasProps) {
-  const center = resolveCenter(job);
+export default function TacticalMapCanvas({ incident, job }: TacticalMapCanvasProps) {
+  const center = resolveCenter(incident, job);
+  const trail = (incident?.trailLine ?? []).map(
+    (point) => [point.lat, point.lng] as LatLngExpression,
+  );
   const routePositions = (job?.route?.waypoints ?? []).map(
     (waypoint) => [waypoint.lat, waypoint.lng] as LatLngExpression,
   );
+  const subject = bestSubject(job);
+  const pin = subject?.groundPoint ?? job?.situation?.groundPoint ?? null;
+  const bufferMeters = incident?.corridorBufferMeters ?? 80;
 
   return (
     <MapContainer
+      key={incident?.id ?? "idle"}
       center={center}
-      zoom={13}
+      zoom={15}
       className="h-full w-full"
       scrollWheelZoom
     >
@@ -27,13 +36,41 @@ export default function TacticalMapCanvas({ job }: TacticalMapCanvasProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {trail.length > 1
+        ? (incident?.trailLine ?? []).map((point, index) => (
+            <Circle
+              key={`buffer-${index}`}
+              center={[point.lat, point.lng]}
+              radius={bufferMeters}
+              pathOptions={{ color: "#8a9a58", weight: 0, fillColor: "#8a9a58", fillOpacity: 0.08 }}
+            />
+          ))
+        : null}
+      {trail.length > 1 ? (
+        <Polyline positions={trail} pathOptions={{ color: "#8a9a58", weight: 6, opacity: 0.55 }} />
+      ) : null}
+      {trail.length > 1 ? (
+        <Polyline positions={trail} pathOptions={{ color: "#c4d67c", weight: 2 }} />
+      ) : null}
       {job?.telemetry ? (
         <CircleMarker
           center={[job.telemetry.position.lat, job.telemetry.position.lng]}
-          radius={8}
+          radius={7}
           pathOptions={{ color: "#f0c14b", fillColor: "#f0c14b", fillOpacity: 0.9 }}
         >
-          <Popup>Drone position</Popup>
+          <Popup>Drone / sortie fix</Popup>
+        </CircleMarker>
+      ) : null}
+      {pin ? (
+        <CircleMarker
+          center={[pin.lat, pin.lng]}
+          radius={10}
+          pathOptions={{ color: "#ff6b4a", fillColor: "#ff6b4a", fillOpacity: 0.95 }}
+        >
+          <Popup>
+            {incident?.subject.displayName ?? "Subject"} · match{" "}
+            {((subject?.clothingMatchScore ?? 0) * 100).toFixed(0)}%
+          </Popup>
         </CircleMarker>
       ) : null}
       {(job?.landingZones ?? []).map((zone) => (
@@ -54,11 +91,28 @@ export default function TacticalMapCanvas({ job }: TacticalMapCanvasProps) {
   );
 }
 
-function resolveCenter(job: JobDetail | null): LatLngExpression {
+function bestSubject(job: JobDetail | null): Detection | null {
+  const people = (job?.detections ?? []).filter((detection) => detection.className === "person");
+  if (people.length === 0) {
+    return null;
+  }
+  return people.reduce((best, current) =>
+    (current.clothingMatchScore ?? 0) > (best.clothingMatchScore ?? 0) ? current : best,
+  );
+}
+
+function resolveCenter(incident: IncidentDetail | null, job: JobDetail | null): LatLngExpression {
+  const subject = bestSubject(job);
+  if (subject?.groundPoint) {
+    return [subject.groundPoint.lat, subject.groundPoint.lng];
+  }
+  if (incident?.trailLine[0]) {
+    return [incident.trailLine[0].lat, incident.trailLine[0].lng];
+  }
   if (job?.telemetry) {
     return [job.telemetry.position.lat, job.telemetry.position.lng];
   }
-  return [40.2338, -111.6585];
+  return [40.24555, -111.62815];
 }
 
 function boundsToPolygon(bounds: JobDetail["landingZones"][number]["bounds"]): LatLngExpression[] {

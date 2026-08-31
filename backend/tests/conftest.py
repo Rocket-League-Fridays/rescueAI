@@ -14,6 +14,7 @@ def client(tmp_path: Path) -> TestClient:
         artifacts_dir=str(tmp_path / "artifacts"),
         ingest_dir=str(tmp_path / "inbox"),
         ingest_watch_enabled=False,
+        yolo_enabled=False,
         api_key=None,
     )
     app = create_app(settings)

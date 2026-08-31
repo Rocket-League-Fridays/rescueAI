@@ -15,3 +15,7 @@ class JobDao(ABC):
     @abstractmethod
     def update(self, job: Job) -> None:
         raise NotImplementedError
+
+    @abstractmethod
+    def list_by_incident_id(self, incident_id: str) -> list[Job]:
+        raise NotImplementedError

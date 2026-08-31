@@ -25,6 +25,20 @@ CREATE TABLE IF NOT EXISTS telemetry (
     battery_percent REAL
 );
 
+CREATE TABLE IF NOT EXISTS incidents (
+    id TEXT PRIMARY KEY,
+    transcript TEXT NOT NULL,
+    subject_name TEXT NOT NULL,
+    clothing_colors_json TEXT NOT NULL DEFAULT '[]',
+    subject_notes TEXT NOT NULL DEFAULT '',
+    trail_name TEXT NOT NULL,
+    trail_line_json TEXT NOT NULL DEFAULT '[]',
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    situation_id TEXT
+);
+
 CREATE TABLE IF NOT EXISTS jobs (
     id TEXT PRIMARY KEY,
     status TEXT NOT NULL,
@@ -36,6 +50,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     detection_ids_json TEXT NOT NULL DEFAULT '[]',
     landing_zone_ids_json TEXT NOT NULL DEFAULT '[]',
     route_id TEXT,
+    incident_id TEXT,
     FOREIGN KEY (telemetry_id) REFERENCES telemetry(id)
 );
 
@@ -63,7 +78,19 @@ CREATE TABLE IF NOT EXISTS detections (
     frame_id TEXT,
     ground_lat REAL,
     ground_lng REAL,
+    clothing_match_score REAL NOT NULL DEFAULT 0,
     FOREIGN KEY (job_id) REFERENCES jobs(id)
+);
+
+CREATE TABLE IF NOT EXISTS situations (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    incident_id TEXT,
+    detection_id TEXT NOT NULL,
+    ground_lat REAL NOT NULL,
+    ground_lng REAL NOT NULL,
+    canopy_fraction REAL NOT NULL,
+    notes TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS ingest_ledger (
@@ -130,11 +157,18 @@ class SqliteConnectionProvider:
     def _initialize_schema(self) -> None:
         with self.connect() as connection:
             connection.executescript(SCHEMA_SQL)
-            self._migrate_detections(connection)
+            self._migrate_columns(connection)
 
-    def _migrate_detections(self, connection: sqlite3.Connection) -> None:
-        columns = {row[1] for row in connection.execute("PRAGMA table_info(detections)")}
-        if "ground_lat" not in columns:
+    def _migrate_columns(self, connection: sqlite3.Connection) -> None:
+        detection_cols = {row[1] for row in connection.execute("PRAGMA table_info(detections)")}
+        if "ground_lat" not in detection_cols:
             connection.execute("ALTER TABLE detections ADD COLUMN ground_lat REAL")
-        if "ground_lng" not in columns:
+        if "ground_lng" not in detection_cols:
             connection.execute("ALTER TABLE detections ADD COLUMN ground_lng REAL")
+        if "clothing_match_score" not in detection_cols:
+            connection.execute(
+                "ALTER TABLE detections ADD COLUMN clothing_match_score REAL NOT NULL DEFAULT 0"
+            )
+        job_cols = {row[1] for row in connection.execute("PRAGMA table_info(jobs)")}
+        if "incident_id" not in job_cols:
+            connection.execute("ALTER TABLE jobs ADD COLUMN incident_id TEXT")

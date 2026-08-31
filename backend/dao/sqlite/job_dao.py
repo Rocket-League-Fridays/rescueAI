@@ -19,8 +19,8 @@ class SqliteJobDao(JobDao):
                 INSERT INTO jobs (
                     id, status, failure_reason, created_at, updated_at,
                     telemetry_id, video_artifact_id, detection_ids_json,
-                    landing_zone_ids_json, route_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    landing_zone_ids_json, route_id, incident_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job.id,
@@ -33,6 +33,7 @@ class SqliteJobDao(JobDao):
                     json.dumps(job.detection_ids),
                     json.dumps(job.landing_zone_ids),
                     job.route_id,
+                    job.incident_id,
                 ),
             )
 
@@ -58,7 +59,8 @@ class SqliteJobDao(JobDao):
                     video_artifact_id = ?,
                     detection_ids_json = ?,
                     landing_zone_ids_json = ?,
-                    route_id = ?
+                    route_id = ?,
+                    incident_id = ?
                 WHERE id = ?
                 """,
                 (
@@ -70,13 +72,23 @@ class SqliteJobDao(JobDao):
                     json.dumps(job.detection_ids),
                     json.dumps(job.landing_zone_ids),
                     job.route_id,
+                    job.incident_id,
                     job.id,
                 ),
             )
             if cursor.rowcount == 0:
                 raise ValueError(f"Failed to update job: job {job.id} does not exist")
 
+    def list_by_incident_id(self, incident_id: str) -> list[Job]:
+        with self._connections.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM jobs WHERE incident_id = ? ORDER BY created_at ASC",
+                (incident_id,),
+            ).fetchall()
+        return [self._to_domain(row) for row in rows]
+
     def _to_domain(self, row: object) -> Job:
+        keys = row.keys()
         return Job(
             id=row["id"],
             status=JobStatus(row["status"]),
@@ -88,4 +100,5 @@ class SqliteJobDao(JobDao):
             detection_ids=json.loads(row["detection_ids_json"]),
             landing_zone_ids=json.loads(row["landing_zone_ids_json"]),
             route_id=row["route_id"],
+            incident_id=row["incident_id"] if "incident_id" in keys else None,
         )

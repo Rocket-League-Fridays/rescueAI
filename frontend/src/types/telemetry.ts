@@ -44,6 +44,7 @@ export interface DroneTelemetry extends DroneTelemetryIn {
 
 export interface CreateJobRequest {
   telemetry: DroneTelemetryIn;
+  incidentId?: string | null;
 }
 
 export interface Artifact {
@@ -65,6 +66,7 @@ export interface Detection {
   confidence: number;
   frameId?: string | null;
   groundPoint?: GeoPoint | null;
+  clothingMatchScore?: number;
 }
 
 export interface LandingZone {
@@ -101,6 +103,17 @@ export interface Job {
   detectionIds: string[];
   landingZoneIds: string[];
   routeId?: string | null;
+  incidentId?: string | null;
+}
+
+export interface SituationAssessment {
+  id: string;
+  jobId: string;
+  incidentId?: string | null;
+  detectionId: string;
+  groundPoint: GeoPoint;
+  canopyFraction: number;
+  notes: string;
 }
 
 export interface JobDetail extends Job {
@@ -108,6 +121,7 @@ export interface JobDetail extends Job {
   detections: Detection[];
   landingZones: LandingZone[];
   route?: Route | null;
+  situation?: SituationAssessment | null;
 }
 
 export interface ApiError {

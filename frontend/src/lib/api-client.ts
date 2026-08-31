@@ -1,3 +1,4 @@
+import type { CreateIncidentRequest, FixtureTranscript, Incident, IncidentDetail } from "@/types/incident";
 import type { CreateJobRequest, Job, JobDetail } from "@/types/telemetry";
 
 export class ApiClientError extends Error {
@@ -13,6 +14,30 @@ export class ApiClientError extends Error {
 export class ApiClient {
   constructor(private readonly baseUrl: string) {}
 
+  async createIncident(request: CreateIncidentRequest): Promise<Incident> {
+    return this.request<Incident>("/incidents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+  }
+
+  async createDemoIncident(): Promise<Incident> {
+    return this.request<Incident>("/incidents/demo", { method: "POST" });
+  }
+
+  async getFixtureTranscript(): Promise<FixtureTranscript> {
+    return this.request<FixtureTranscript>("/incidents/fixture");
+  }
+
+  async getActiveIncident(): Promise<IncidentDetail> {
+    return this.request<IncidentDetail>("/incidents/active");
+  }
+
+  async getIncident(incidentId: string): Promise<IncidentDetail> {
+    return this.request<IncidentDetail>(`/incidents/${incidentId}`);
+  }
+
   async createJob(request: CreateJobRequest): Promise<Job> {
     return this.request<Job>("/telemetry", {
       method: "POST",
@@ -24,6 +49,9 @@ export class ApiClient {
   async createJobWithVideo(request: CreateJobRequest, video: File): Promise<Job> {
     const formData = new FormData();
     formData.append("telemetry", JSON.stringify(request.telemetry));
+    if (request.incidentId) {
+      formData.append("incident_id", request.incidentId);
+    }
     formData.append("video", video);
     return this.request<Job>("/telemetry/upload", {
       method: "POST",
@@ -39,10 +67,7 @@ export class ApiClient {
     const response = await fetch(`${this.baseUrl}${path}`, init);
     if (!response.ok) {
       const detail = await readErrorDetail(response);
-      throw new ApiClientError(
-        `Failed to call ${path}: ${detail}`,
-        response.status,
-      );
+      throw new ApiClientError(`Failed to call ${path}: ${detail}`, response.status);
     }
     return (await response.json()) as T;
   }

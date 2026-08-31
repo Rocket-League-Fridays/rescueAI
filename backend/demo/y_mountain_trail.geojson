@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "name": "Y Mountain Trail",
+  "attribution": "Approximate OSM-derived hiking alignment for demo use. Not a survey.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Y Mountain Trail",
+        "trailhead": "Y Trailhead, Provo, Utah"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-111.62815, 40.24555],
+          [-111.62740, 40.24590],
+          [-111.62680, 40.24625],
+          [-111.62620, 40.24665],
+          [-111.62555, 40.24705],
+          [-111.62490, 40.24740],
+          [-111.62430, 40.24780],
+          [-111.62370, 40.24815],
+          [-111.62310, 40.24855],
+          [-111.62250, 40.24895],
+          [-111.62190, 40.24935],
+          [-111.62140, 40.24975],
+          [-111.62090, 40.25015],
+          [-111.62050, 40.25055],
+          [-111.62010, 40.25095],
+          [-111.61970, 40.25125],
+          [-111.61945, 40.25145]
+        ]
+      }
+    }
+  ]
+}

@@ -46,8 +46,9 @@ def test_get_job_returns_detail_after_create(
     assert body["status"] in {"queued", "processing", "completed"}
     assert body["telemetry"]["id"] == body["telemetryId"]
     assert body["detections"] == []
-    assert body["landingZones"] == []
-    assert body["route"] is None
+    if body["status"] == "completed":
+        assert len(body["landingZones"]) == 1
+        assert body["route"] is not None
 
 
 def test_get_missing_job_returns_404(client: TestClient) -> None:

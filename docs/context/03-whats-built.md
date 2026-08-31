@@ -10,17 +10,18 @@ Honest inventory. If it is not listed as **real**, treat it as a stub or placeho
 - [`backend/requirements.txt`](../../backend/requirements.txt)
 - [`frontend/package.json`](../../frontend/package.json)
 - [`.gitignore`](../../.gitignore) — venv, `node_modules`, `.next`, `backend/data/`, `*.db`
+- Demo fixtures (committed): [`backend/demo/`](../../backend/demo/) — Josh transcript + `y_mountain_trail.geojson`
 
 ### Contracts
 
-- Domain dataclasses: [`backend/models/domain.py`](../../backend/models/domain.py)
+- Domain dataclasses: [`backend/models/domain.py`](../../backend/models/domain.py) — includes `Incident`, `SituationAssessment`, `Job.incident_id`, `Detection.clothing_match_score`
 - Pydantic HTTP models + camelCase aliases: [`backend/models/schemas.py`](../../backend/models/schemas.py)
-- TypeScript mirrors: [`frontend/src/types/telemetry.ts`](../../frontend/src/types/telemetry.ts)
+- TypeScript mirrors: [`frontend/src/types/telemetry.ts`](../../frontend/src/types/telemetry.ts), [`frontend/src/types/incident.ts`](../../frontend/src/types/incident.ts)
 
 ### Persistence
 
 - DAO ABCs + `DaoFactory`: [`backend/dao/interface/`](../../backend/dao/interface/)
-- SQLite impls: [`backend/dao/sqlite/`](../../backend/dao/sqlite/)
+- SQLite impls: [`backend/dao/sqlite/`](../../backend/dao/sqlite/) — tables include `incidents`, `situations`
 - `ArtifactStore` + local disk: [`backend/storage/`](../../backend/storage/)
 
 ### API
@@ -28,74 +29,97 @@ Honest inventory. If it is not listed as **real**, treat it as a stub or placeho
 | Method | Path | Behavior |
 | --- | --- | --- |
 | `GET` | `/health` | `{"status":"ok"}` |
-| `POST` | `/telemetry` | JSON `CreateJobRequest` → `201` + `JobOut` (`queued`) |
-| `POST` | `/telemetry/upload` | Form `telemetry` (JSON string) + optional `video` file |
-| `GET` | `/jobs/{job_id}` | `JobDetailOut` (ids + nested telemetry/detections/LZs/route) |
+| `POST` | `/incidents` | Transcript → extract subject/trail → `IncidentOut` |
+| `POST` | `/incidents/demo` | Load Josh / Y fixture and open an incident |
+| `GET` | `/incidents/fixture` | Fixture transcript text only |
+| `GET` | `/incidents/active` | Latest open incident + jobs + situation |
+| `GET` | `/incidents/{id}` | Incident detail |
+| `POST` | `/telemetry` | JSON `CreateJobRequest` (optional `incidentId`) → `201` + `JobOut` |
+| `POST` | `/telemetry/upload` | Form `telemetry` + optional `incidentId` + `video` |
+| `GET` | `/jobs/{job_id}` | `JobDetailOut` (ids + nested telemetry/detections/LZs/route/situation) |
 
-Invalid telemetry (e.g. `lat: 200`) → **422**.
+Invalid telemetry (e.g. `lat: 200`) → **422**. Missing incident → **404**.
 
 Optional auth: `X-API-Key` when `SAR_API_KEY` is set.
 
+Sorties without `incidentId` attach to the **open** incident when one exists.
+
 ### Job worker
 
-- [`backend/tasks/async_workers.py`](../../backend/tasks/async_workers.py) — `processing` → extract → CV → georeference → GIS → `completed` or `failed` with `failure_reason`
+- [`backend/tasks/async_workers.py`](../../backend/tasks/async_workers.py) — `processing` → extract → CV → georeference → situation → GIS (situation + trail) → `completed` or `failed` with `failure_reason`
 - Structured JSON logs (`event=job_completed` / `job_failed`)
 
 ### Video ingest (Member 1 — real)
 
 - [`OpenCvFrameExtractor`](../../backend/services/ingest/opencv_frame_extractor.py) — strided JPEG frames via `ArtifactStore` / `ArtifactDao`
-- [`SlidingWindowSahiTiler`](../../backend/services/ingest/sahi_tiler.py) — in-memory 640×640 overlapping tiles for Member 2 (not persisted)
-- [`IngestWatcher`](../../backend/services/ingest/folder_watcher.py) — polls `SAR_INGEST_DIR`, debounce, SHA-256 ledger
+- [`SlidingWindowSahiTiler`](../../backend/services/ingest/sahi_tiler.py) — in-memory 640×640 overlapping tiles (not persisted)
+- [`IngestWatcher`](../../backend/services/ingest/folder_watcher.py) — polls `SAR_INGEST_DIR`, debounce, SHA-256 ledger; attaches to the open incident
 - DJI `.SRT` parser → job telemetry; else `SAR_DEFAULT_*`
 - [`PinholeGeoreferencer`](../../backend/services/ingest/pinhole_georeferencer.py) — optional `groundPoint` on detections (approximate)
 
-### Frontend shell
+### Intake (real)
+
+- [`KeywordTranscriptExtractor`](../../backend/services/intake/transcript_extractor.py) — name / colors / Y-trail keywords (no LLM required)
+- [`TrailCatalog`](../../backend/services/intake/trail_catalog.py) — committed GeoJSON corridor
+- [`IncidentService`](../../backend/services/intake/incident_service.py)
+
+### Computer vision (Member 2 — real when ultralytics loads)
+
+- [`ClothingScoringCvPipeline`](../../backend/services/cv/clothing_cv_pipeline.py) — SAHI tiles → person detector → restitch → NMS → HSV `clothingMatchScore`
+- [`UltralyticsPersonDetector`](../../backend/services/cv/ultralytics_detector.py) — YOLO11n, COCO person class
+- If YOLO is disabled or import fails, `StubCvPipeline` is used (frames still extract)
+
+### Situation (real)
+
+- [`SituationAssessor`](../../backend/services/situation/assessor.py) — best clothing match + pinhole `groundPoint` + HSV green canopy fraction
+
+### GIS (Member 3 — demo-scoped, real)
+
+- [`YTrailGisRouter`](../../backend/services/gis/y_trail_router.py) — synthetic DEM around the Y, slope + canopy thresholds, ~100×100 ft LZ, walk-back onto the trail
+- `StubGisRouter` remains as a test double
+
+### Frontend (Member 4)
 
 - Next.js App Router, TypeScript strict, Tailwind, dark tactical theme
-- `DashboardPresenter` + `DashboardView`
-- `ApiClient` (`createJob`, `createJobWithVideo`, `getJob`)
+- `DashboardPresenter` + `DashboardView` — intake, demo fixture, refresh incident, attach sortie
+- `ApiClient` — incidents + jobs
 - `StreamViewer` — two labeled panes, no decoder
-- `TacticalMap` — Leaflet OSM, drone `CircleMarker`, empty route/LZ overlays
-- Submit button posts **sample Provo-area telemetry** (hardcoded in `page.tsx`)
+- `TacticalMap` — trail + buffer, Josh pin, LZ polygon, walk-back route
+- Clothing-match alert when `clothingMatchScore` is high
 
 ### Tests (pytest)
 
 - Invalid telemetry → 422
-- Valid telemetry → job created, `queued`
-- GET job after create (telemetry echoed; stub results empty)
+- Valid telemetry → job created, `queued`; completed jobs get an LZ/route from `YTrailGisRouter`
+- GET job after create
 - Missing job → 404
 - `JobDao` save/get round-trip
 - `StubGisRouter` returns `[], None`
+- OpenCV extractor, SAHI tiler, DJI SRT, watcher, pinhole georeference
+- Incident extract + Y corridor + demo API + sortie `incidentId`
+- HSV clothing score, NMS, clothing CV pipeline, situation assessor, Y-trail GIS walk-back
 
-## Stubbed (replace, do not delete the interface)
+## Stubbed (fallback only)
 
-| Interface | Stub | Returns today |
+| Interface | Stub | When used |
 | --- | --- | --- |
-| `CvPipeline` | `services/stubs/cv_pipeline.py` | `[]` |
-| `GisRouter` | `services/stubs/gis_routing.py` | `[], None` |
+| `CvPipeline` | `services/stubs/cv_pipeline.py` | `SAR_YOLO_ENABLED=false` or ultralytics missing |
+| `GisRouter` | `services/stubs/gis_routing.py` | Tests / optional swap |
 
-`FrameExtractor` is **no longer a stub** (`OpenCvFrameExtractor`). `StubFrameExtractor` remains only as a test double if needed.
-
-A job **still completes**. The dashboard will show `completed` with zero detections, zero LZs, no route. That is expected.
+`FrameExtractor` is `OpenCvFrameExtractor`. `StubFrameExtractor` is a test double if needed.
 
 ## Placeholders (UI only)
 
 - Raw / processed video panes — copy only, no streaming
-- Map tiles are OSM; no SAR overlay styling beyond olive/amber path options
-- Person-alert banner exists but never fires until CV writes `person` detections
+- Map tiles are OSM
 
 ## Not in the repo
 
-YOLO11 / VisDrone weights, NMS, restitch, OpenTopography / USGS 3DEP client, RichDEM slope, A*, live DJI downlink, Mapbox tokens, Docker, AWS, OpenAPI codegen.
+Live DJI downlink, face ID, AllTrails, live 3DEP/Overpass as the only GIS path, statewide trail graph, custom VisDrone training, Docker, AWS, OpenAPI codegen.
 
-## Smoke check (already verified once)
+## Demo script
 
-```bash
-curl -s localhost:8000/health
-# {"status":"ok"}
-
-curl -s -X POST localhost:8000/telemetry \
-  -H 'Content-Type: application/json' \
-  -d '{"telemetry":{"position":{"lat":40.2338,"lng":-111.6585},"bounds":{"southWest":{"lat":40.22,"lng":-111.68},"northEast":{"lat":40.25,"lng":-111.63}},"altitudeMeters":420,"headingDegrees":135,"gimbal":{"pitchDegrees":-45,"yawDegrees":0,"rollDegrees":0},"timestampUtc":"2026-08-31T20:00:00Z"}}'
-# 201, status queued, then worker sets completed
-```
+1. `./start_dev.sh`
+2. Dashboard: **Load Josh / Y fixture** → **Open incident** (trail + 80 m buffer)
+3. Drop Mini `DJI_*.MP4` + `.SRT` in `backend/data/inbox/` or **Process video**
+4. **Refresh after inbox drop** — person box, clothing %, Josh pin, canopy, LZ, walk-back

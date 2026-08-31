@@ -2,13 +2,14 @@
 
 JSON on the wire is **camelCase**. Python domain/SQLite columns are **snake_case**. Pydantic `alias_generator=to_camel` + `populate_by_name=True` bridges them.
 
-If you add a field: update `domain.py`, `schemas.py`, `telemetry.ts`, and the SQLite row mapping in the same change.
+If you add a field: update `domain.py`, `schemas.py`, `telemetry.ts` / `incident.ts`, and the SQLite row mapping in the same change.
 
 ## Enums
 
 | Name | Values |
 | --- | --- |
 | `JobStatus` | `queued`, `processing`, `completed`, `failed` |
+| `IncidentStatus` | `open`, `closed` |
 | `ArtifactKind` | `raw_video`, `frame`, `annotated_frame` |
 | `DetectionClassName` | `person`, `vehicle`, `other` |
 
@@ -37,7 +38,7 @@ Member 1 validation surface. Required on `POST /telemetry`.
 | `speedMps` | `speed_mps` | optional, >= 0 |
 | `batteryPercent` | `battery_percent` | optional, 0..100 |
 
-`CreateJobRequest` is `{ "telemetry": DroneTelemetryIn }` (no `id` on the way in).
+`CreateJobRequest` is `{ "telemetry": DroneTelemetryIn, "incidentId"?: string }`. If `incidentId` is omitted, the job attaches to the open incident when one exists.
 
 ## Job
 
@@ -52,8 +53,35 @@ Member 1 validation surface. Required on `POST /telemetry`.
 | `detectionIds` | string[] |
 | `landingZoneIds` | string[] |
 | `routeId` | null until GIS writes a route |
+| `incidentId` | optional; search sortie linked to an Incident |
 
-`GET /jobs/{id}` also nests `telemetry`, `detections`, `landingZones`, `route` (`JobDetail`).
+`GET /jobs/{id}` also nests `telemetry`, `detections`, `landingZones`, `route`, `situation` (`JobDetail`).
+
+## Incident / subject
+
+| JSON | Notes |
+| --- | --- |
+| `id` | UUID |
+| `transcript` | raw distress text |
+| `subject.displayName` | e.g. Josh |
+| `subject.clothingColors` | `["red", ...]` |
+| `subject.notes` | extractor notes |
+| `trailName` | e.g. `Y Mountain Trail` |
+| `trailLine` | GeoJSON-derived `GeoPoint[]` |
+| `status` | `open` \| `closed` |
+| `situationId` | set after a sortie produces a `SituationAssessment` |
+| `corridorBufferMeters` | search buffer (default 80) |
+
+`GET /incidents/{id}` also nests `jobs[]` and `situation`.
+
+## SituationAssessment
+
+| JSON | Notes |
+| --- | --- |
+| `detectionId` | winning person (highest `clothingMatchScore`) |
+| `groundPoint` | pinhole lat/lng |
+| `canopyFraction` | 0..1 HSV green around the box |
+| `notes` | operator-visible method string |
 
 ## Artifact (metadata only)
 
@@ -78,6 +106,7 @@ Bytes: `ArtifactStore.put/get/delete(storage_key)`. Keys must not start with `/`
 | `confidence` | 0..1 |
 | `frameId` | optional artifact id of the source frame |
 | `groundPoint` | optional `{lat, lng}` — **approximate** pinhole projection (Member 1). Not DEM-accurate. |
+| `clothingMatchScore` | 0..1 HSV overlap with transcript clothing colors |
 
 NMS + restitch happen **inside** `CvPipeline` before you return this list. The worker then runs `DetectionGeoreferencer` before `DetectionDao.save_all`.
 
@@ -98,7 +127,9 @@ FrameExtractor.extract(video_artifact: Artifact) -> list[Artifact]
 SahiTiler.tile(image: ndarray) -> list[SahiTile]   # x, y, 640, 640, image (in-memory)
 CvPipeline.process(job: Job, frames: list[Artifact]) -> list[Detection]
 DetectionGeoreferencer.apply(detections, telemetry, frames, frame_poses?) -> list[Detection]
-GisRouter.route(job: Job, telemetry: DroneTelemetry) -> tuple[list[LandingZone], Route | None]
+GisRouter.route(job, telemetry, situation=None, trail_line=None) -> tuple[list[LandingZone], Route | None]
+TranscriptExtractor.extract(transcript) -> (SubjectProfile, trail_name)
+PersonDetector.detect(image) -> list[RawDetection]
 ```
 
 Assign new UUIDs inside your implementation. The worker saves lists via `save_all` / `RouteDao.save` and copies ids onto the job.
@@ -107,7 +138,9 @@ Assign new UUIDs inside your implementation. The worker saves lists via `save_al
 
 | DAO | Methods |
 | --- | --- |
-| `JobDao` | `save`, `get_by_id`, `update` |
+| `JobDao` | `save`, `get_by_id`, `update`, `list_by_incident_id` |
+| `IncidentDao` | `save`, `get_by_id`, `get_open`, `update` |
+| `SituationDao` | `save`, `get_by_id`, `get_by_job_id` |
 | `TelemetryDao` | `save`, `get_by_id` |
 | `ArtifactDao` | `save`, `get_by_id`, `list_by_job_id` |
 | `DetectionDao` | `save`, `save_all`, `get_by_id`, `list_by_job_id` |

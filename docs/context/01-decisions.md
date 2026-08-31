@@ -85,3 +85,17 @@ These were agreed while scaffolding. Do not silently reverse them.
 ## D14 — Approximate person coordinates
 
 **Decision:** After CV, `PinholeGeoreferencer` writes optional `Detection.groundPoint` using job (or SRT-derived) telemetry and camera HFOV. Flat earth, not DEM. Member 3 can replace this later with terrain ray-cast without changing the JSON field.
+
+## D15 — Incident first, video is a sortie
+
+**Decision:** The product story starts at a distress **Incident** (transcript, subject, trail corridor). A Job is a search sortie attached via `incidentId`. Inbox and upload attach to the open incident when `incidentId` is omitted.
+
+**Why:** Judges see call → corridor → footage → find → LZ, not “submit sample telemetry.”
+
+## D16 — Clothing color match, not face ID
+
+**Decision:** CV scores `clothingMatchScore` (HSV overlap with transcript colors) on person boxes. No face re-ID.
+
+## D17 — Demo GIS uses a cached / synthetic Y DEM
+
+**Decision:** `YTrailGisRouter` uses an in-memory synthetic DEM around the committed Y-trail GeoJSON. No live 3DEP or Overpass on stage. LZ + walk-back snap onto the trail line.

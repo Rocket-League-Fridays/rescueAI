@@ -14,10 +14,12 @@ FastAPI (:8000)
         |
         | BackgroundTasks
         v
+IncidentService (transcript → subject + trail)
 JobProcessor
   FrameExtractor  --> frames (Artifact metadata + bytes)
-  CvPipeline      --> Detection rows
-  GisRouter       --> LandingZone rows + Route
+  CvPipeline      --> Detection rows (+ clothingMatchScore)
+  SituationAssessor --> SituationAssessment
+  GisRouter       --> LandingZone rows + Route (situation + trail)
 ```
 
 ```mermaid
@@ -58,9 +60,9 @@ Routes must not contain business logic. They parse, call a service, enqueue work
 1. `Settings()` from env (`SAR_*`).
 2. `SqliteDaoFactory.initialize(database_path)`
 3. `LocalArtifactStore.initialize(artifacts_dir)`
-4. Stub `FrameExtractor`, `CvPipeline`, `GisRouter`
-5. `DefaultServiceFactory(...)` + `JobProcessor(...)`
-6. Store factory + processor on `app.state` for FastAPI `Depends`
+4. `OpenCvFrameExtractor`, YOLO `ClothingScoringCvPipeline` (or stub), `YTrailGisRouter`, `SituationAssessor`
+5. `DefaultServiceFactory(...)` + `JobProcessor(...)` + `IncidentService`
+6. Store factory, processor, and incident service on `app.state` for FastAPI `Depends`
 
 Tests call `create_app(Settings(database_path=tmp, artifacts_dir=tmp))` so they never touch `backend/data/`.
 
@@ -79,8 +81,9 @@ process_job(job_id)
   status = processing
   frames = FrameExtractor.extract(video) or []
   detections = CvPipeline.process(job, frames)
-  save detections; job.detection_ids = [...]
-  (lzs, route) = GisRouter.route(job, telemetry)
+  georeference + save detections; job.detection_ids = [...]
+  situation = SituationAssessor.assess(...)
+  (lzs, route) = GisRouter.route(job, telemetry, situation, trail_line)
   save LZs + route; set ids
   status = completed
   on exception: status = failed, failure_reason = classified
@@ -92,16 +95,16 @@ process_job(job_id)
 page.tsx (View implementation)
     --> DashboardPresenter (no React)
           --> ApiClient
-                --> POST /telemetry, GET /jobs/{id}
+                --> POST /incidents, POST /telemetry, GET /jobs/{id}
     --> StreamViewer (placeholder panes)
     --> TacticalMap --> dynamic TacticalMapCanvas (Leaflet)
 ```
 
-Person-detection alerts render when `job.detections` contains `className === "person"`. Stubs return `[]`, so the banner is wired but idle.
+Clothing-match alerts render when a person detection has a high `clothingMatchScore`.
 
 ## Persistence schema (SQLite)
 
-Tables: `telemetry`, `jobs`, `artifacts`, `detections`, `landing_zones`, `routes`.
+Tables: `telemetry`, `incidents`, `jobs`, `artifacts`, `detections`, `situations`, `landing_zones`, `routes`, `ingest_ledger`.
 
 - `jobs.detection_ids_json` / `landing_zone_ids_json` are JSON string arrays (denormalized ids for the job row).
 - `routes.waypoints_json` is a JSON array of `{lat, lng, elevation_meters}`.
@@ -128,10 +131,7 @@ DaoFactory          -> SqliteDaoFactory today
                        DynamoDaoFactory / PostgresDaoFactory later
 ArtifactStore       -> LocalArtifactStore today
                        S3ArtifactStore later
-CvPipeline          -> StubCvPipeline today
-                       VisDroneYoloPipeline later
-GisRouter           -> StubGisRouter today
-                       UsgsAStarRouter later
-FrameExtractor      -> StubFrameExtractor today
-                       OpenCvSahiExtractor later
+CvPipeline          -> ClothingScoringCvPipeline today (StubCvPipeline fallback)
+GisRouter           -> YTrailGisRouter today (StubGisRouter is a test double)
+FrameExtractor      -> OpenCvFrameExtractor today
 ```

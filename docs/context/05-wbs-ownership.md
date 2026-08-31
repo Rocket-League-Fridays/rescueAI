@@ -8,11 +8,12 @@ Implement **your** stub. Do not rewrite another member’s interface or the job 
 
 **Own**
 
-- `backend/api/routes_telemetry.py`, `routes_jobs.py`, `dependencies.py`
+- `backend/api/routes_telemetry.py`, `routes_jobs.py`, `routes_incidents.py`, `dependencies.py`
+- Intake: `IncidentService`, keyword extractor, `TrailCatalog`, `backend/demo/`
 - `backend/core/logging.py`, `core/config.py`
 - `OpenCvFrameExtractor` (already wired in `main.py`)
 - `SlidingWindowSahiTiler` — Member 2 **calls this**; do not invent a second windowing scheme
-- `IngestWatcher` + DJI SRT parser + `IngestLedger`
+- `IngestWatcher` + DJI SRT parser + `IngestLedger` (attach inbox jobs to the open incident)
 - `PinholeGeoreferencer` (approximate `groundPoint` only)
 - `start_dev.sh` / env defaults if boot breaks
 
@@ -20,12 +21,12 @@ Implement **your** stub. Do not rewrite another member’s interface or the job 
 
 ## Member 2 — Computer vision
 
-**Goal:** VisDrone-tuned YOLO11 on 640×640 tiles, NMS on overlaps, restitch to full-frame boxes.
+**Goal:** YOLO11 person boxes on 640×640 tiles, NMS, restitch, clothing-color score (not face ID).
 
 **Own**
 
-- New impl of `CvPipeline` (do not grow `StubCvPipeline` into a monolith — add a new module)
-- Tile inference, NMS, restitch
+- [`ClothingScoringCvPipeline`](../../backend/services/cv/clothing_cv_pipeline.py) (do not grow `StubCvPipeline`)
+- Tile inference, NMS, restitch, HSV `clothingMatchScore`
 - Writing `Detection` rows with **full-frame** `bbox`
 
 **Do not** change job status yourself; `JobProcessor` does that. Do not fetch DEMs.
@@ -34,12 +35,12 @@ Implement **your** stub. Do not rewrite another member’s interface or the job 
 
 ## Member 3 — GIS & A*
 
-**Goal:** DEM for `telemetry.bounds`, slope map, 100x100 ft LZ scan (slope under 5 degrees), terrain-aware A*.
+**Goal:** Cached/synthetic Y DEM, slope + canopy thresholds, LZ, walk-back onto the trail.
 
 **Own**
 
-- New impl of `GisRouter`
-- DEM client, rasterio/richdem, LZ scanner, A*
+- [`YTrailGisRouter`](../../backend/services/gis/y_trail_router.py)
+- Consume `SituationAssessment.groundPoint` + `canopyFraction` + `trail_line`
 - Persist `LandingZone` + `Route`
 
 **Do not** call YOLO. Cost function stays inside `GisRouter`.
@@ -48,13 +49,13 @@ Implement **your** stub. Do not rewrite another member’s interface or the job 
 
 ## Member 4 — Frontend
 
-**Goal:** Tactical dashboard: processed vs raw video, map overlays, person alerts.
+**Goal:** Five-beat dashboard: transcript → corridor → footage → find → LZ.
 
 **Own**
 
-- `frontend/src/app/`, `components/`, `presenter/`, `lib/api-client.ts`
+- `frontend/src/app/`, `components/`, `presenter/`, `lib/api-client.ts`, `types/incident.ts`
 - Keep `DashboardPresenter` free of React
-- When CV/GIS return data, overlay route, LZs, and alert on `person`
+- Overlay trail/buffer, Josh pin, LZ, walk-back; alert on high `clothingMatchScore`
 
 **Do not** duplicate backend types. Extend `telemetry.ts` only when schemas change (same PR as Pydantic).
 

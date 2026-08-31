@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from core.config import Settings
+from dao.interface.incident_dao import IncidentDao
 from dao.interface.ingest_ledger import IngestLedger
 from services.ingest.default_telemetry import request_from_settings, request_from_srt
 from services.ingest.srt_parser import mid_sample, parse_dji_srt
@@ -25,11 +26,13 @@ class IngestWatcher:
         job_service: JobService,
         job_processor: JobProcessor,
         ledger: IngestLedger,
+        incident_dao: IncidentDao | None = None,
     ) -> None:
         self._settings = settings
         self._job_service = job_service
         self._job_processor = job_processor
         self._ledger = ledger
+        self._incident_dao = incident_dao
         self._inbox = Path(settings.ingest_dir)
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -91,6 +94,10 @@ class IngestWatcher:
         if self._ledger.has_processed(digest):
             return None
         request = self._telemetry_for(path)
+        if self._incident_dao is not None:
+            open_incident = self._incident_dao.get_open()
+            if open_incident is not None:
+                request.incident_id = open_incident.id
         job = self._job_service.create_job(
             request,
             video_bytes=path.read_bytes(),

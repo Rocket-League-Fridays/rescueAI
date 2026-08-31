@@ -24,6 +24,11 @@ class DetectionClassName(str, Enum):
     OTHER = "other"
 
 
+class IncidentStatus(str, Enum):
+    OPEN = "open"
+    CLOSED = "closed"
+
+
 @dataclass(frozen=True)
 class GeoPoint:
     lat: float
@@ -85,6 +90,7 @@ class Detection:
     confidence: float
     frame_id: str | None = None
     ground_point: GeoPoint | None = None
+    clothing_match_score: float = 0.0
 
 
 @dataclass
@@ -125,3 +131,35 @@ class Job:
     detection_ids: list[str] = field(default_factory=list)
     landing_zone_ids: list[str] = field(default_factory=list)
     route_id: str | None = None
+    incident_id: str | None = None
+
+
+@dataclass
+class SubjectProfile:
+    display_name: str
+    clothing_colors: list[str] = field(default_factory=list)
+    notes: str = ""
+
+
+@dataclass
+class Incident:
+    id: str
+    transcript: str
+    subject: SubjectProfile
+    trail_name: str
+    trail_line: list[GeoPoint]
+    status: IncidentStatus
+    created_at: datetime
+    updated_at: datetime
+    situation_id: str | None = None
+
+
+@dataclass
+class SituationAssessment:
+    id: str
+    job_id: str
+    incident_id: str | None
+    detection_id: str
+    ground_point: GeoPoint
+    canopy_fraction: float
+    notes: str = ""

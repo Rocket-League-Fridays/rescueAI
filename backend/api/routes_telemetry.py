@@ -35,12 +35,16 @@ def create_job_from_telemetry(
 def create_job_with_video(
     background_tasks: BackgroundTasks,
     telemetry: str = Form(...),
+    incident_id: str | None = Form(default=None),
     video: UploadFile | None = File(default=None),
     job_service: JobService = Depends(get_job_service),
     processor: JobProcessor = Depends(get_job_processor),
 ) -> JobOut:
     try:
-        request = CreateJobRequest(telemetry=DroneTelemetryIn.model_validate_json(telemetry))
+        request = CreateJobRequest(
+            telemetry=DroneTelemetryIn.model_validate_json(telemetry),
+            incident_id=incident_id,
+        )
     except ValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
