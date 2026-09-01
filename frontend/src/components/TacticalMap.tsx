@@ -11,7 +11,7 @@ import type { GeoPoint, JobDetail } from "@/types/telemetry";
 const TacticalMapCanvas = dynamic(() => import("./TacticalMapCanvas"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full items-center justify-center font-mono text-xs text-olive-400">
+    <div className="flex h-full items-center justify-center font-mono text-xs text-ink-400">
       Initializing map…
     </div>
   ),
@@ -40,11 +40,11 @@ export function TacticalMap({
 }: TacticalMapProps) {
   return (
     <section
-      className={`flex h-full ${minHeightClass} flex-col overflow-hidden rounded-lg border border-olive-700 bg-tactical-800`}
+      className={`flex h-full ${minHeightClass} flex-col overflow-hidden rounded-lg border border-line bg-surface-raised shadow-panel`}
     >
-      <header className="flex items-center justify-between border-b border-olive-800 px-3 py-2">
-        <h3 className="font-mono text-xs uppercase tracking-widest text-olive-200">{title}</h3>
-        <span className="font-mono text-[10px] text-olive-500">
+      <header className="flex items-center justify-between border-b border-line-soft px-4 py-2.5">
+        <h3 className="text-[15px] font-semibold tracking-tight text-ink-100">{title}</h3>
+        <span className="font-mono text-[11px] text-ink-500">
           {incident?.trailName ?? "NO CORRIDOR"}
         </span>
       </header>

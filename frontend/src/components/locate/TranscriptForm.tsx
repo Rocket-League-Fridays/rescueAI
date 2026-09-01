@@ -2,7 +2,7 @@
 
 import { FormEvent } from "react";
 
-import { Panel, inputClass } from "@/components/ui";
+import { buttonPrimary, buttonSecondary, inputClass, Panel } from "@/components/ui";
 
 interface TranscriptFormProps {
   transcript: string;
@@ -11,7 +11,6 @@ interface TranscriptFormProps {
   onTranscriptChange(value: string): void;
   onOpenIncident(): void;
   onLoadFixtureTranscript(): void;
-  onLoadMockSortie(): void;
 }
 
 export function TranscriptForm({
@@ -21,7 +20,6 @@ export function TranscriptForm({
   onTranscriptChange,
   onOpenIncident,
   onLoadFixtureTranscript,
-  onLoadMockSortie,
 }: TranscriptFormProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,25 +43,18 @@ export function TranscriptForm({
           <button
             type="button"
             onClick={onLoadFixtureTranscript}
-            className="flex-1 rounded border border-olive-600 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-olive-200 hover:border-olive-400"
+            className={`${buttonSecondary} flex-1`}
           >
             Load Josh / Y fixture
           </button>
           <button
             type="submit"
             disabled={isLoading || !transcript.trim()}
-            className="flex-1 rounded bg-amber-400 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-tactical-950 disabled:opacity-50"
+            className={`${buttonPrimary} flex-1`}
           >
             {isOpened ? "Re-open incident" : "Open incident"}
           </button>
         </div>
-        <button
-          type="button"
-          onClick={onLoadMockSortie}
-          className="w-full rounded border border-dashed border-olive-700 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-olive-500 hover:border-olive-500 hover:text-olive-300"
-        >
-          Dev · load mock sortie
-        </button>
       </form>
     </Panel>
   );

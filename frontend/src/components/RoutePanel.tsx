@@ -52,13 +52,13 @@ export function RoutePanel({ job, incident, actions }: RoutePanelProps) {
   );
 
   return (
-    <section className="flex flex-col overflow-hidden rounded-lg border border-olive-700 bg-tactical-800">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-olive-800 px-3 py-2">
-        <h3 className="font-mono text-xs uppercase tracking-widest text-olive-200">
+    <section className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface-raised shadow-panel">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
+        <h3 className="text-[15px] font-semibold tracking-tight text-ink-100">
           Route to subject
         </h3>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-olive-500">
+          <span className="font-mono text-xs text-ink-500">
             {incident?.subject.displayName.toUpperCase() || "NO SUBJECT"}
           </span>
           {actions}
@@ -75,7 +75,7 @@ export function RoutePanel({ job, incident, actions }: RoutePanelProps) {
         </div>
       ) : (
         <div className="flex min-h-[160px] items-center justify-center p-6">
-          <p className="text-center font-mono text-xs text-olive-500">
+          <p className="text-center font-mono text-xs text-ink-500">
             No route yet — process a sortie
           </p>
         </div>
@@ -96,9 +96,9 @@ function TotalsRow({ route }: { route: Route }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border border-olive-800 bg-tactical-900 px-2 py-2">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-olive-500">{label}</p>
-      <p className="mt-1 font-mono text-sm text-olive-100">{value}</p>
+    <div className="rounded border border-line-soft bg-surface-sunken px-2 py-2">
+      <p className="font-mono text-[11px] uppercase tracking-label text-ink-500">{label}</p>
+      <p className="mt-1 font-mono text-sm text-ink-100">{value}</p>
     </div>
   );
 }
@@ -114,36 +114,36 @@ function LandingZoneSummary({
 
   if (!top) {
     return (
-      <div className="rounded border border-olive-800 bg-tactical-900 px-3 py-2">
+      <div className="rounded border border-line-soft bg-surface-sunken px-3 py-2">
         <SectionLabel>Landing zone</SectionLabel>
-        <p className="mt-1 font-mono text-xs text-olive-500">No candidate pads</p>
+        <p className="mt-1 font-mono text-xs text-ink-500">No candidate pads</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <div className="rounded border border-olive-700 bg-tactical-900 px-3 py-2">
+      <div className="rounded border border-line bg-surface-sunken px-3 py-2">
         <div className="flex items-baseline justify-between">
           <SectionLabel>
             Landing zone {selectedId === top.id ? "· routed" : "· top pick"}
           </SectionLabel>
-          <span className="font-mono text-[10px] text-amber-300">
+          <span className="font-mono text-[11px] text-accent-300">
             {(top.suitabilityScore * 100).toFixed(0)}% suitable
           </span>
         </div>
-        <p className="mt-1 font-mono text-xs text-olive-100">
+        <p className="mt-1 font-mono text-xs text-ink-100">
           {top.centroid.lat.toFixed(5)}, {top.centroid.lng.toFixed(5)}
         </p>
-        <dl className="mt-2 grid grid-cols-3 gap-2 font-mono text-[10px]">
+        <dl className="mt-2 grid grid-cols-3 gap-2 font-mono text-[11px]">
           <Field label="Max slope" value={`${top.maxSlopeDegrees.toFixed(1)}°`} />
           <Field label="Area" value={`${Math.round(top.areaSqFt).toLocaleString()} ft²`} />
           <Field label="Canopy" value={formatCanopy(top.canopyFraction)} />
         </dl>
-        <p className="mt-1 text-[10px] text-olive-500">
+        <p className="mt-1 text-[12px] leading-relaxed text-ink-500">
           Steepest slope anywhere in the pad, not at the centroid
         </p>
-        {top.notes ? <p className="mt-2 text-xs text-olive-300">{top.notes}</p> : null}
+        {top.notes ? <p className="mt-2 text-xs text-ink-300">{top.notes}</p> : null}
       </div>
 
       {rest.length > 0 ? (
@@ -151,7 +151,7 @@ function LandingZoneSummary({
           {rest.map((zone) => (
             <li
               key={zone.id}
-              className="flex items-center justify-between rounded border border-olive-800 px-2 py-1 font-mono text-[10px] text-olive-400"
+              className="flex items-center justify-between rounded border border-line-soft px-2 py-1 font-mono text-[11px] text-ink-400"
             >
               <span>
                 {zone.centroid.lat.toFixed(5)}, {zone.centroid.lng.toFixed(5)}
@@ -171,8 +171,8 @@ function LandingZoneSummary({
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="uppercase tracking-widest text-olive-500">{label}</dt>
-      <dd className="mt-0.5 text-olive-100">{value}</dd>
+      <dt className="uppercase tracking-label text-ink-500">{label}</dt>
+      <dd className="mt-0.5 text-ink-100">{value}</dd>
     </div>
   );
 }
@@ -185,16 +185,16 @@ function LegBreakdown({ route }: { route: Route }) {
         {route.legs.map((leg, index) => (
           <li
             key={`${leg.kind}-${leg.startIndex}-${index}`}
-            className="flex items-center gap-2 rounded border border-olive-800 bg-tactical-900 px-2 py-1.5"
+            className="flex items-center gap-2 rounded border border-line-soft bg-surface-sunken px-2 py-1.5"
           >
             <span
               className="h-3 w-1.5 shrink-0 rounded-sm"
               style={{ backgroundColor: ROUTE_LEG_COLORS[leg.kind] }}
             />
-            <span className="min-w-0 flex-1 truncate text-xs text-olive-100">
+            <span className="min-w-0 flex-1 truncate text-xs text-ink-100">
               {leg.label || ROUTE_LEG_LABELS[leg.kind]}
             </span>
-            <span className="shrink-0 font-mono text-[10px] text-olive-400">
+            <span className="shrink-0 font-mono text-[11px] text-ink-400">
               {Math.round(leg.distanceMeters)} m · +{Math.round(leg.elevationGainMeters)} m ·{" "}
               {formatMinutes(leg.estimatedMinutes)}
             </span>
@@ -211,22 +211,22 @@ function WaypointTable({ route }: { route: Route }) {
   return (
     <div>
       <SectionLabel>Waypoints ({route.waypoints.length})</SectionLabel>
-      <div className="mt-2 max-h-64 overflow-y-auto rounded border border-olive-800">
-        <table className="w-full border-collapse font-mono text-[10px]">
-          <thead className="sticky top-0 bg-tactical-950">
-            <tr className="text-olive-500">
-              <th className="px-2 py-1 text-left font-normal uppercase tracking-widest">#</th>
-              <th className="px-2 py-1 text-right font-normal uppercase tracking-widest">Lat</th>
-              <th className="px-2 py-1 text-right font-normal uppercase tracking-widest">Lng</th>
-              <th className="px-2 py-1 text-right font-normal uppercase tracking-widest">Elev</th>
-              <th className="px-2 py-1 text-right font-normal uppercase tracking-widest">Dist</th>
+      <div className="mt-2 max-h-64 overflow-y-auto rounded border border-line-soft">
+        <table className="w-full border-collapse font-mono text-[11px]">
+          <thead className="sticky top-0 bg-surface-sunken">
+            <tr className="text-ink-500">
+              <th className="px-2 py-1 text-left font-normal uppercase tracking-label">#</th>
+              <th className="px-2 py-1 text-right font-normal uppercase tracking-label">Lat</th>
+              <th className="px-2 py-1 text-right font-normal uppercase tracking-label">Lng</th>
+              <th className="px-2 py-1 text-right font-normal uppercase tracking-label">Elev</th>
+              <th className="px-2 py-1 text-right font-normal uppercase tracking-label">Dist</th>
             </tr>
           </thead>
           <tbody>
             {route.waypoints.map((waypoint, index) => {
               const leg = legForWaypointIndex(route.legs, index);
               return (
-                <tr key={index} className="border-t border-olive-800/60 text-olive-200">
+                <tr key={index} className="border-t border-line-soft/60 text-ink-200">
                   <td className="px-2 py-1">
                     <span className="flex items-center gap-1.5">
                       <span
@@ -244,7 +244,7 @@ function WaypointTable({ route }: { route: Route }) {
                   <td className="px-2 py-1 text-right">
                     {Math.round(waypoint.elevationMeters)} m
                   </td>
-                  <td className="px-2 py-1 text-right text-olive-400">
+                  <td className="px-2 py-1 text-right text-ink-400">
                     {Math.round(distances[index])} m
                   </td>
                 </tr>
@@ -259,6 +259,6 @@ function WaypointTable({ route }: { route: Route }) {
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="font-mono text-[10px] uppercase tracking-widest text-olive-400">{children}</p>
+    <p className="font-mono text-[11px] uppercase tracking-label text-ink-400">{children}</p>
   );
 }

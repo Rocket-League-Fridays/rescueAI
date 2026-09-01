@@ -1,5 +1,6 @@
 "use client";
 
+import { labelClass, StatusChip } from "@/components/ui";
 import type { IncidentDetail } from "@/types/incident";
 import type { Detection } from "@/types/telemetry";
 
@@ -15,17 +16,22 @@ export function SubjectAlert({ detections, incident }: SubjectAlertProps) {
   );
 
   return (
-    <div className="rounded-lg border border-amber-600 bg-amber-950/70 px-3 py-2">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-amber-300">
-        Subject match
+    <div className="rounded-lg border border-accent-400/45 bg-accent-400/[0.08] px-3.5 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className={labelClass}>Subject match</p>
+        <StatusChip tone="probable" pulse>
+          Alert
+        </StatusChip>
+      </div>
+      <p className="mt-1.5 text-[15px] font-semibold tracking-tight text-ink-50">
+        {incident.subject.displayName || "Person"} ·{" "}
+        <span className="font-mono text-accent-300">
+          {Math.round((best.clothingMatchScore ?? 0) * 100)}%
+        </span>{" "}
+        clothing
       </p>
-      <p className="text-sm text-amber-100">
-        {incident.subject.displayName || "Person"} · clothing{" "}
-        {Math.round((best.clothingMatchScore ?? 0) * 100)}%
-      </p>
-      <p className="mt-0.5 font-mono text-[10px] text-amber-200/70">
-        {detections.length} candidate{detections.length === 1 ? "" : "s"} over threshold ·
-        {" "}
+      <p className="mt-1 text-[13px] leading-relaxed text-ink-400">
+        {detections.length} candidate{detections.length === 1 ? "" : "s"} over threshold ·{" "}
         {incident.subject.clothingColors.join(", ") || "no colors on file"}
       </p>
     </div>

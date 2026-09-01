@@ -1,6 +1,14 @@
 "use client";
 
-import { EmptyState, SectionLabel, Stat } from "@/components/ui";
+import {
+  buttonPrimary,
+  EmptyState,
+  PanelHeader,
+  SectionLabel,
+  Stat,
+  StatusChip,
+  type StatusTone,
+} from "@/components/ui";
 import type { IncidentDetail } from "@/types/incident";
 import type { Detection, JobDetail, JobStatus } from "@/types/telemetry";
 
@@ -20,7 +28,7 @@ interface ScanMonitorProps {
 export function ScanMonitor({ job, incident, onGoToRescue }: ScanMonitorProps) {
   if (job === null) {
     return (
-      <section className="overflow-hidden rounded-lg border border-olive-700 bg-tactical-800">
+      <section className="overflow-hidden rounded-lg border border-line bg-surface-raised shadow-panel">
         <Header status={null} />
         <div className="p-4">
           <EmptyState>No sortie attached yet — the scan runs on uploaded or inbox footage</EmptyState>
@@ -34,7 +42,7 @@ export function ScanMonitor({ job, incident, onGoToRescue }: ScanMonitorProps) {
   const fix = job.situation?.groundPoint ?? best?.groundPoint ?? null;
 
   return (
-    <section className="overflow-hidden rounded-lg border border-olive-700 bg-tactical-800">
+    <section className="overflow-hidden rounded-lg border border-line bg-surface-raised shadow-panel">
       <Header status={job.status} />
       <div className="space-y-4 p-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -48,27 +56,29 @@ export function ScanMonitor({ job, incident, onGoToRescue }: ScanMonitorProps) {
         </div>
 
         {job.status === "failed" ? (
-          <p className="rounded border border-red-800 bg-red-950/60 px-3 py-2 text-xs text-red-200">
+          <p className="rounded-md border border-status-critical/50 bg-status-critical/10 px-3 py-2 text-[13px] text-status-critical">
             Scan failed: {job.failureReason ?? "no reason recorded"}
           </p>
         ) : null}
 
         {fix ? (
-          <div className="rounded border border-amber-600 bg-amber-950/50 px-3 py-3">
-            <SectionLabel>Subject fix</SectionLabel>
-            <p className="mt-1 font-mono text-sm text-amber-100">
+          /* A position we would actually send a team to — the one moment this screen goes green. */
+          <div className="rounded-lg border border-status-confirmed/45 bg-status-confirmed/[0.08] px-3.5 py-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <SectionLabel>Subject fix</SectionLabel>
+              <StatusChip tone="confirmed">Located</StatusChip>
+            </div>
+            <p className="mt-1.5 font-mono text-xl tracking-tight text-status-confirmed">
               {fix.lat.toFixed(5)}, {fix.lng.toFixed(5)}
             </p>
-            <p className="mt-1 text-xs text-amber-200/80">
+            <p className="mt-1.5 text-[13px] leading-relaxed text-ink-300">
               {incident.subject.displayName || "Subject"} ·{" "}
-              {best ? `${Math.round((best.clothingMatchScore ?? 0) * 100)}% clothing match` : "no clothing score"}
+              {best
+                ? `${Math.round((best.clothingMatchScore ?? 0) * 100)}% clothing match`
+                : "no clothing score"}
               {" · approximate pinhole projection, not DEM-accurate"}
             </p>
-            <button
-              type="button"
-              onClick={onGoToRescue}
-              className="mt-3 w-full rounded bg-amber-400 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-tactical-950"
-            >
+            <button type="button" onClick={onGoToRescue} className={`${buttonPrimary} mt-3.5 w-full`}>
               Go to rescue →
             </button>
           </div>
@@ -85,29 +95,30 @@ export function ScanMonitor({ job, incident, onGoToRescue }: ScanMonitorProps) {
 }
 
 function Header({ status }: { status: JobStatus | null }) {
+  const [tone, pulse] = statusTone(status);
   return (
-    <header className="flex items-center justify-between border-b border-olive-800 px-3 py-2">
-      <h3 className="font-mono text-xs uppercase tracking-widest text-olive-200">Scan results</h3>
-      <span
-        className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest ${statusStyle(status)}`}
-      >
-        {status ?? "standby"}
-      </span>
-    </header>
+    <PanelHeader
+      title="Scan results"
+      actions={
+        <StatusChip tone={tone} pulse={pulse}>
+          {status ?? "standby"}
+        </StatusChip>
+      }
+    />
   );
 }
 
-function statusStyle(status: JobStatus | null): string {
+function statusTone(status: JobStatus | null): [StatusTone, boolean] {
   switch (status) {
     case "completed":
-      return "border-olive-500 text-olive-200";
+      return ["confirmed", false];
     case "processing":
     case "queued":
-      return "border-amber-500 text-amber-300";
+      return ["searching", true];
     case "failed":
-      return "border-red-700 text-red-300";
+      return ["critical", false];
     default:
-      return "border-olive-800 text-olive-500";
+      return ["neutral", false];
   }
 }
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { buttonSecondary } from "@/components/ui";
 import {
   downloadRoute,
   EXPORT_FORMAT_LABELS,
@@ -34,18 +35,18 @@ export function ExportMenu({ route, label = "Export route" }: ExportMenuProps) {
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((open) => !open)}
-        className="rounded border border-olive-600 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-olive-100 hover:border-olive-400 disabled:cursor-not-allowed disabled:opacity-40"
+        className={buttonSecondary}
       >
         {label} ▾
       </button>
       {isOpen && !disabled ? (
-        <ul className="absolute right-0 z-[1000] mt-1 w-48 overflow-hidden rounded border border-olive-700 bg-tactical-900 shadow-lg">
+        <ul className="absolute right-0 z-[1000] mt-1 w-48 overflow-hidden rounded border border-line bg-surface-raised shadow-lg">
           {FORMATS.map((format) => (
             <li key={format}>
               <button
                 type="button"
                 onClick={() => handleExport(format)}
-                className="block w-full px-3 py-2 text-left font-mono text-[10px] uppercase tracking-widest text-olive-200 hover:bg-olive-800/60 hover:text-olive-50"
+                className="block w-full px-3 py-2 text-left text-xs font-semibold uppercase tracking-label text-ink-200 transition-colors hover:bg-surface-hover hover:text-accent-300"
               >
                 {EXPORT_FORMAT_LABELS[format]}
               </button>

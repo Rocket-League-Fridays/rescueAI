@@ -52,7 +52,7 @@ export function SubjectReviewForm({ incident, overrides, onChange }: SubjectRevi
             onChange={(event) => set("clothingColors", parseColors(event.target.value))}
             className={inputClass}
           />
-          <p className="text-[10px] text-olive-500">
+          <p className="text-[12px] leading-relaxed text-ink-500">
             Comma separated. Drives the CV clothing-match score.
           </p>
         </FieldRow>
@@ -85,7 +85,7 @@ export function SubjectReviewForm({ incident, overrides, onChange }: SubjectRevi
               onChange={(event) => set("corridorBufferMeters", Number(event.target.value))}
               className={`${inputClass} w-28 font-mono text-xs`}
             />
-            <span className="font-mono text-[10px] uppercase tracking-widest text-olive-500">
+            <span className="font-mono text-[11px] uppercase tracking-label text-ink-500">
               meters either side of {incident.trailName || "the trail"}
             </span>
           </div>

@@ -6,12 +6,15 @@ interface StreamViewerProps {
   job: JobDetail | null;
   subjectName?: string;
   artifactContentUrl(artifactId: string): string;
+  /** Stack the panels vertically instead of side by side (for narrow columns). */
+  stacked?: boolean;
 }
 
 export function StreamViewer({
   job,
   subjectName = "Subject",
   artifactContentUrl,
+  stacked = false,
 }: StreamViewerProps) {
   const annotated = latestArtifact(job?.artifacts, "annotated_frame");
   const raw =
@@ -22,7 +25,7 @@ export function StreamViewer({
   const best = bestPerson(job);
 
   return (
-    <section className="grid gap-3 md:grid-cols-2">
+    <section className={`grid gap-3 ${stacked ? "grid-cols-1" : "md:grid-cols-2"}`}>
       <FeedPanel
         title="Source frame"
         artifact={raw}
@@ -68,20 +71,20 @@ function FeedPanel({
 }) {
   return (
     <div
-      className={`overflow-hidden rounded-lg border bg-tactical-800 ${
-        highlight ? "border-amber-500 shadow-[0_0_24px_rgba(240,193,75,0.14)]" : "border-olive-700"
+      className={`overflow-hidden rounded-lg border bg-surface-raised shadow-panel ${
+        highlight ? "border-accent-400/60 shadow-glow" : "border-line"
       }`}
     >
-      <header className="flex items-center justify-between border-b border-olive-800 px-3 py-2">
+      <header className="flex items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
         <h3
-          className={`font-mono text-xs uppercase tracking-widest ${
-            highlight ? "text-amber-300" : "text-olive-200"
+          className={`text-[15px] font-semibold tracking-tight ${
+            highlight ? "text-accent-300" : "text-ink-100"
           }`}
         >
           {title}
         </h3>
-        <span className="font-mono text-[10px] text-olive-500">
-          {jobId ? `JOB ${jobId.slice(0, 8)}` : "STANDBY"}
+        <span className="shrink-0 font-mono text-[11px] uppercase tracking-label text-ink-500">
+          {jobId ? `Job ${jobId.slice(0, 8)}` : "Standby"}
         </span>
       </header>
       <div className="relative flex aspect-video items-center justify-center bg-black/75">
@@ -95,16 +98,17 @@ function FeedPanel({
           />
         ) : (
           <div className="space-y-3 px-5 text-center">
-            <div className="mx-auto h-1 w-24 overflow-hidden rounded bg-olive-900">
-              <div className="h-full w-1/2 animate-pulse rounded bg-amber-400" />
+            <div className="mx-auto h-1 w-24 overflow-hidden rounded-full bg-surface-sunken">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-status-searching" />
             </div>
-            <p className="font-mono text-xs text-olive-400">{emptyLabel}</p>
+            <p className="text-[13px] text-ink-400">{emptyLabel}</p>
           </div>
         )}
       </div>
       {footer ? (
-        <footer className="border-t border-amber-900 bg-amber-950/60 px-3 py-2 font-mono text-[10px] tracking-wider text-amber-200">
-          SUBJECT FOUND · {footer}
+        <footer className="flex items-center gap-2 border-t border-status-confirmed/30 bg-status-confirmed/[0.08] px-4 py-2 font-mono text-[11px] uppercase tracking-label text-status-confirmed">
+          <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+          Subject found · {footer}
         </footer>
       ) : null}
     </div>
