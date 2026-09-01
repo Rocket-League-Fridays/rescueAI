@@ -98,4 +98,6 @@ These were agreed while scaffolding. Do not silently reverse them.
 
 ## D17 — Demo GIS uses a cached / synthetic Y DEM
 
-**Decision:** `YTrailGisRouter` uses an in-memory synthetic DEM around the committed Y-trail GeoJSON. No live 3DEP or Overpass on stage. LZ + walk-back snap onto the trail line.
+**Decision:** `YTrailGisRouter` reads elevation from a **committed USGS 3DEP tile** — `backend/demo/y_mountain_dem.npz`, 178×160 samples at ~10 m over the Y corridor, fetched once by `backend/scripts/fetch_dem.py` (62 KB). Nothing hits the network at request time. Corridors outside that tile fall back to a synthetic surface, and every `LandingZone` reports which one produced its numbers. No live 3DEP or Overpass on stage.
+
+**Why the cached tile rather than the synthetic:** the synthetic was `elevation = f(distance from trail)` — monotonic, with no ridges. A* over it returned the straight line it was meant to replace, so a working router and a broken one were indistinguishable. Real relief is what makes the search observable: on the demo fixture the direct line crosses 50°, well past what a litter carry can cross.

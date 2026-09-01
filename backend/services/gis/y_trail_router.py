@@ -27,7 +27,13 @@ from services.gis.route_metrics import (
     leg_minutes,
     summarize,
 )
-from services.gis.terrain import DEFAULT_CELL_METERS, TerrainGrid, build_corridor_grid
+from services.gis.terrain import (
+    DEFAULT_CELL_METERS,
+    ELEVATION_SOURCE_CACHED,
+    ELEVATION_SOURCE_SYNTHETIC,
+    TerrainGrid,
+    build_corridor_grid,
+)
 from services.interface.gis_router import GisRouter
 
 _MAX_LZ_SLOPE_DEG = 8.0
@@ -45,12 +51,20 @@ _LZ_UNASSESSED = [
     LandingZoneCriterion.CANOPY,
     LandingZoneCriterion.APPROACH_CLEARANCE,
 ]
-_LZ_NOTES = (
-    "Slope-only suitability over the pad footprint, on a synthetic DEM. Pad is "
-    "verified reachable under the carry slope ceiling. Canopy over the pad and "
-    "approach/departure clearance are NOT assessed — this site is not cleared "
-    "for a helicopter on these numbers alone."
-)
+_DEM_LABEL = {
+    ELEVATION_SOURCE_CACHED: "cached USGS 3DEP elevation (10 m)",
+    ELEVATION_SOURCE_SYNTHETIC: "a synthetic fallback surface, not real elevation",
+}
+
+
+def _lz_notes(source: str) -> str:
+    dem = _DEM_LABEL.get(source, source)
+    return (
+        f"Slope-only suitability over the pad footprint, from {dem}. Pad is "
+        "verified reachable under the carry slope ceiling. Canopy over the pad "
+        "and approach/departure clearance are NOT assessed — this site is not "
+        "cleared for a helicopter on these numbers alone."
+    )
 _ROUTE_NOTES = (
     "Least-cost carry route: loaded descent weighted above ascent, refusing "
     "ground steeper than the carry ceiling. estimatedMinutes is the loaded "
@@ -63,7 +77,8 @@ class YTrailGisRouter(GisRouter):
 
     The route is chosen for the leg that binds — carrying a subject out — not
     for the walk in, so it will trade distance for ground a litter team can
-    actually cross. Terrain is a synthetic stand-in for a cached 3DEP tile.
+    actually cross. Elevation comes from a committed USGS 3DEP tile; corridors
+    outside it fall back to a synthetic surface, which each site reports.
     """
 
     def __init__(self, cell_meters: float = DEFAULT_CELL_METERS) -> None:
@@ -146,7 +161,7 @@ def _to_landing_zone(job_id: str, grid: TerrainGrid, cell: Cell) -> LandingZone:
         suitability_score=_slope_suitability(max_slope),
         assessed_criteria=list(_LZ_ASSESSED),
         unassessed_criteria=list(_LZ_UNASSESSED),
-        notes=_LZ_NOTES,
+        notes=_lz_notes(grid.source),
     )
 
 

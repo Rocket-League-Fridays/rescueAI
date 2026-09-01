@@ -76,7 +76,10 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 
 ### GIS (Member 3 — demo-scoped, real)
 
-- [`YTrailGisRouter`](../../backend/services/gis/y_trail_router.py) — synthetic DEM around the Y, slope + canopy thresholds, ~100×100 ft LZ, walk-back onto the trail
+- [`terrain.py`](../../backend/services/gis/terrain.py) — committed USGS 3DEP tile at ~10 m, bilinearly sampled; synthetic fallback outside it, reported per site
+- [`cost_surface.py`](../../backend/services/gis/cost_surface.py) — carry cost: loaded descent weighted above ascent, refuses ground past the carry ceiling
+- [`astar.py`](../../backend/services/gis/astar.py) — A* plus a Dijkstra `cost_field` that prices the whole corridor in one sweep
+- [`YTrailGisRouter`](../../backend/services/gis/y_trail_router.py) — reachability- and footprint-filtered LZ, then a least-cost carry route onto the trail
 - `StubGisRouter` remains as a test double
 
 ### Frontend (Member 4)

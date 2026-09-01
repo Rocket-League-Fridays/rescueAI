@@ -1,15 +1,26 @@
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
 from models.domain import GeoBounds, GeoPoint
 
+logger = logging.getLogger(__name__)
+
 METERS_PER_DEG_LAT = 111_320.0
 DEFAULT_CELL_METERS = 10.0
 _CORRIDOR_PAD_DEG = 0.002
+
+ELEVATION_SOURCE_CACHED = "usgs_3dep_cached"
+ELEVATION_SOURCE_SYNTHETIC = "synthetic"
+
+_CACHED_DEM_FILENAME = "y_mountain_dem.npz"
+_cached_dem: dict | None = None
+_cached_dem_loaded = False
 
 
 @dataclass(frozen=True)
@@ -25,6 +36,7 @@ class TerrainGrid:
     elevation: np.ndarray
     slope: np.ndarray
     cell_meters: float
+    source: str = ELEVATION_SOURCE_SYNTHETIC
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -77,9 +89,13 @@ def build_corridor_grid(
     lat_axis = np.arange(lat0, lat1 + lat_step, lat_step)
     lng_axis = np.arange(lng0, lng1 + lng_step, lng_step)
 
-    elevation = _synthetic_y_face(lat_axis, lng_axis)
-    if trail:
-        elevation = _bench_the_trail(elevation, lat_axis, lng_axis, trail)
+    elevation = _sample_cached_dem(lat_axis, lng_axis)
+    source = ELEVATION_SOURCE_CACHED
+    if elevation is None:
+        source = ELEVATION_SOURCE_SYNTHETIC
+        elevation = _synthetic_y_face(lat_axis, lng_axis)
+        if trail:
+            elevation = _bench_the_trail(elevation, lat_axis, lng_axis, trail)
     dnorth = (lat_axis[1] - lat_axis[0]) * METERS_PER_DEG_LAT
     deast = (lng_axis[1] - lng_axis[0]) * METERS_PER_DEG_LAT * math.cos(
         math.radians(subject.lat)
@@ -92,16 +108,73 @@ def build_corridor_grid(
         elevation=elevation,
         slope=slope,
         cell_meters=cell_meters,
+        source=source,
     )
 
 
-def _synthetic_y_face(lat_axis: np.ndarray, lng_axis: np.ndarray) -> np.ndarray:
-    """Deterministic stand-in for a cached 3DEP tile of the Y Mountain face.
+def _load_cached_dem() -> dict | None:
+    """Load the committed 3DEP tile once, or None if it is not present."""
+    global _cached_dem, _cached_dem_loaded
+    if _cached_dem_loaded:
+        return _cached_dem
+    _cached_dem_loaded = True
+    path = Path(__file__).resolve().parents[2] / "demo" / _CACHED_DEM_FILENAME
+    if not path.is_file():
+        logger.warning(
+            "dem_cache_missing",
+            extra={"event": "dem_cache_missing", "path": str(path)},
+        )
+        _cached_dem = None
+        return None
+    with np.load(path) as data:
+        _cached_dem = {
+            "elevation": data["elevation"].astype(float),
+            "lat0": float(data["lat0"]),
+            "lng0": float(data["lng0"]),
+            "dlat": float(data["dlat"]),
+            "dlng": float(data["dlng"]),
+        }
+    return _cached_dem
 
-    Not a survey. It exists so a router has real landform to work against: a
-    steep west-facing wall off the Provo bench, a spur ridge, and two drainages
-    cutting across it. Replace with a cached raster behind `build_corridor_grid`
-    and nothing downstream changes.
+
+def _sample_cached_dem(lat_axis: np.ndarray, lng_axis: np.ndarray) -> np.ndarray | None:
+    """Bilinearly sample the cached tile, or None if the window escapes it.
+
+    The corridor is only covered near the Y. Anywhere else falls back to the
+    synthetic face rather than silently extrapolating real data.
+    """
+    dem = _load_cached_dem()
+    if dem is None:
+        return None
+    grid = dem["elevation"]
+    rows, cols = grid.shape
+    row_pos = (lat_axis - dem["lat0"]) / dem["dlat"]
+    col_pos = (lng_axis - dem["lng0"]) / dem["dlng"]
+    if row_pos.min() < 0 or col_pos.min() < 0 or row_pos.max() > rows - 1 or col_pos.max() > cols - 1:
+        logger.info(
+            "dem_cache_miss_outside_tile",
+            extra={"event": "dem_cache_miss_outside_tile"},
+        )
+        return None
+
+    row_floor = np.floor(row_pos).astype(int)
+    col_floor = np.floor(col_pos).astype(int)
+    row_ceil = np.minimum(row_floor + 1, rows - 1)
+    col_ceil = np.minimum(col_floor + 1, cols - 1)
+    row_weight = (row_pos - row_floor)[:, None]
+    col_weight = (col_pos - col_floor)[None, :]
+
+    top = grid[np.ix_(row_floor, col_floor)] * (1 - col_weight) + grid[np.ix_(row_floor, col_ceil)] * col_weight
+    bottom = grid[np.ix_(row_ceil, col_floor)] * (1 - col_weight) + grid[np.ix_(row_ceil, col_ceil)] * col_weight
+    return top * (1 - row_weight) + bottom * row_weight
+
+
+def _synthetic_y_face(lat_axis: np.ndarray, lng_axis: np.ndarray) -> np.ndarray:
+    """Fallback landform for corridors the cached 3DEP tile does not cover.
+
+    Not a survey. A steep west-facing wall off the Provo bench, a spur ridge,
+    and two drainages, so a router still has structure to work against outside
+    the cached window.
     """
     lat0 = float(lat_axis.mean())
     north = (lat_axis - lat_axis[0]) * METERS_PER_DEG_LAT
