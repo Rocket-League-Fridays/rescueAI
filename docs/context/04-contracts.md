@@ -135,7 +135,7 @@ NMS + restitch happen **inside** `CvPipeline` before you return this list. The w
 
 ## LandingZone / Route (Member 3 output)
 
-**LandingZone:** `id`, `jobId`, `centroid`, `bounds`, `maxSlopeDegrees`, `areaSqFt`, `canopyFraction?`, `suitabilityScore`, `notes`.
+**LandingZone:** `id`, `jobId`, `centroid`, `bounds`, `maxSlopeDegrees`, `areaSqFt`, `canopyFraction?`, `suitabilityScore`, `approachBearingsDegrees`, `notes`.
 
 | Field | Meaning |
 | --- | --- |
@@ -143,6 +143,7 @@ NMS + restitch happen **inside** `CvPipeline` before you return this list. The w
 | `areaSqFt` | Measured from `bounds`, not assumed |
 | `canopyFraction` | `null` when no overhead-cover estimate covers this site. **`null` is not a measured zero** — render it as unknown, never as clear |
 | `suitabilityScore` | 0..1, higher is better. Orders candidates when a router returns more than one |
+| `approachBearingsDegrees` | Compass bearings a helicopter can fly in on without terrain rising through an 8:1 glide surface. **Terrain only** — trees, wires and towers are not modelled. Empty means no usable approach and the pad is not offered |
 | `notes` | Which criteria that score actually accounts for |
 
 `GisRouter.route` returns `list[LandingZone]` — today `YTrailGisRouter` returns exactly one, but the plural is deliberate. A real site finder produces ranked candidates; sort by `suitabilityScore` and show `notes` so an operator can see why the top pick won.
@@ -160,7 +161,11 @@ NMS + restitch happen **inside** `CvPipeline` before you return this list. The w
 
 **The UI must render `unassessedCriteria`.** A pad that reads as landable because nobody evaluated its approach is the failure these fields exist to prevent — and a `suitabilityScore` shown without them implies a completeness the number does not have. A test asserts the two lists are disjoint and together cover the whole enum, so adding a criterion forces someone to classify it rather than silently omit it.
 
-**Approach and departure clearance is declared, not measured.** It is the criterion that most determines whether a helicopter can actually use a site, and its measured shape is still open — clear bearing sectors, per-quadrant booleans, or a glide-slope angle. Until someone implements it, every site reports it as unassessed. Whoever does implement it adds the measurement field then, in one change across `domain.py`, `schemas.py`, `frontend/src/types/`, the SQLite mapping, and this doc.
+**Approach and departure clearance is measured, against terrain only.** [`approach.py`](../../backend/services/gis/approach.py) walks each of 12 compass bearings out to 300 m and asks whether terrain rises through an 8:1 glide surface off the pad. A pad with no clear bearing is not offered at all, and `suitabilityScore` is discounted when the clear bearings contain no opposing pair — a crew that can only come in from one side must take that line whatever the wind is doing.
+
+What it does **not** model: trees, wires, towers, or airspace. A bearing reported clear is clear of *ground*. That is why `approach_clearance` being in `assessedCriteria` still does not mean the site is cleared for an aircraft, and why the notes say so outright.
+
+**Canopy over the pad remains unmeasured.** The only canopy estimate in the system describes the subject's surroundings, not a candidate pad, so `canopyFraction` stays `null` and `canopy` stays in `unassessedCriteria`. Populating it needs georeferenced imagery sampled across the search area — a dependency on the CV seam, not a GIS-local change.
 
 **RouteWaypoint:** `lat`, `lng`, `elevationMeters`.
 

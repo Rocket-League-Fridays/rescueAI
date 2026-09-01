@@ -81,6 +81,7 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 
 - [`terrain.py`](../../backend/services/gis/terrain.py) — committed USGS 3DEP tile at ~10 m, bilinearly sampled; synthetic fallback outside it, reported per site
 - [`cost_surface.py`](../../backend/services/gis/cost_surface.py) — carry cost: loaded descent weighted above ascent, refuses ground past the carry ceiling
+- [`approach.py`](../../backend/services/gis/approach.py) — helicopter approach/departure clearance over 12 bearings against an 8:1 glide surface; terrain only, no trees or wires
 - [`astar.py`](../../backend/services/gis/astar.py) — A* plus a Dijkstra `cost_field` that prices the whole corridor in one sweep
 - [`YTrailGisRouter`](../../backend/services/gis/y_trail_router.py) — reachability- and footprint-filtered LZ, then a least-cost carry route onto the trail
 - `StubGisRouter` remains as a test double

@@ -118,6 +118,12 @@ class LandingZone:
     candidates and `notes` records which criteria that score actually accounts
     for, so an operator is never guessing what was checked.
 
+    `approach_bearings_degrees` are compass bearings a helicopter can fly in on
+    without terrain rising through the glide surface. Terrain only — no trees or
+    wires — and an empty list means no usable approach was found. Two opposing
+    bearings matter more than many adjacent ones, because a crew needs to pick
+    the into-wind line rather than take whatever single one exists.
+
     `assessed_criteria` and `unassessed_criteria` partition every
     `LandingZoneCriterion`, so a site states in structured form what was never
     checked. A pad that reads as landable because nobody evaluated its approach
@@ -132,6 +138,7 @@ class LandingZone:
     area_sq_ft: float
     canopy_fraction: float | None = None
     suitability_score: float = 0.0
+    approach_bearings_degrees: list[int] = field(default_factory=list)
     assessed_criteria: list[LandingZoneCriterion] = field(default_factory=list)
     unassessed_criteria: list[LandingZoneCriterion] = field(default_factory=list)
     notes: str = ""

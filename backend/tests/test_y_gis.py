@@ -12,7 +12,7 @@ from models.domain import (
 )
 from services.gis.route_metrics import summarize
 from services.gis.terrain import build_corridor_grid
-from services.gis.y_trail_router import YTrailGisRouter, _slope_suitability
+from services.gis.y_trail_router import YTrailGisRouter, _slope_suitability, _suitability
 from services.intake.incident_service import resolve_demo_dir
 from services.intake.trail_catalog import TrailCatalog
 
@@ -126,6 +126,18 @@ def test_landing_zone_score_is_bounded_and_falls_as_slope_rises() -> None:
     zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
     zone = zones[0]
     assert 0.0 <= zone.suitability_score <= 1.0
-    assert zone.suitability_score == _slope_suitability(zone.max_slope_degrees)
+    assert zone.suitability_score == _suitability(
+        zone.max_slope_degrees, zone.approach_bearings_degrees
+    )
     assert _slope_suitability(2.0) > _slope_suitability(7.0)
     assert zone.notes != ""
+
+
+def test_a_one_sided_approach_scores_below_an_opposing_pair() -> None:
+    flat = 2.0
+    one_sided = _suitability(flat, [180, 210, 240])
+    opposing = _suitability(flat, [0, 180])
+    none_at_all = _suitability(flat, [])
+    assert none_at_all == 0.0
+    assert one_sided < opposing
+    assert opposing == _slope_suitability(flat)
