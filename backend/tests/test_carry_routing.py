@@ -160,14 +160,28 @@ def test_every_criterion_is_declared_assessed_or_not() -> None:
     )
 
 
-def test_approach_clearance_is_never_claimed_as_assessed() -> None:
+def test_approach_clearance_is_assessed_and_canopy_still_is_not() -> None:
     from models.domain import LandingZoneCriterion
 
     job, telemetry, situation, trail = _scenario()
     zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
     zone = zones[0]
-    assert LandingZoneCriterion.APPROACH_CLEARANCE in zone.unassessed_criteria
+    assert LandingZoneCriterion.APPROACH_CLEARANCE in zone.assessed_criteria
     assert LandingZoneCriterion.CANOPY in zone.unassessed_criteria
+    assert zone.approach_bearings_degrees, "an assessed pad must report its clear bearings"
+
+
+def test_a_pad_is_only_offered_if_something_can_fly_into_it() -> None:
+    job, telemetry, situation, trail = _scenario()
+    zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
+    assert zones[0].approach_bearings_degrees != []
+
+
+def test_terrain_only_clearance_is_stated_in_the_notes() -> None:
+    job, telemetry, situation, trail = _scenario()
+    zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
+    notes = zones[0].notes.lower()
+    assert "terrain" in notes and "not cleared" in notes
 
 
 def test_unassessed_canopy_stays_null_and_is_declared() -> None:

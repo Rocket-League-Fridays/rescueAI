@@ -212,6 +212,7 @@ class LandingZoneOut(CamelModel):
     area_sq_ft: float = Field(ge=0)
     canopy_fraction: float | None = Field(default=None, ge=0, le=1)
     suitability_score: float = Field(default=0.0, ge=0, le=1)
+    approach_bearings_degrees: list[int] = Field(default_factory=list)
     assessed_criteria: list[LandingZoneCriterion] = Field(default_factory=list)
     unassessed_criteria: list[LandingZoneCriterion] = Field(default_factory=list)
     notes: str = ""
@@ -227,6 +228,7 @@ class LandingZoneOut(CamelModel):
             area_sq_ft=landing_zone.area_sq_ft,
             canopy_fraction=landing_zone.canopy_fraction,
             suitability_score=landing_zone.suitability_score,
+            approach_bearings_degrees=list(landing_zone.approach_bearings_degrees),
             assessed_criteria=list(landing_zone.assessed_criteria),
             unassessed_criteria=list(landing_zone.unassessed_criteria),
             notes=landing_zone.notes,

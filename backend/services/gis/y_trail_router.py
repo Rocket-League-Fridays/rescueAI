@@ -17,6 +17,7 @@ from models.domain import (
     RouteWaypoint,
     SituationAssessment,
 )
+from services.gis.approach import clear_approach_bearings, has_opposing_pair
 from services.gis.astar import Cell, cost_field, trace_path
 from services.gis.cost_surface import CarryCostSurface
 from services.gis.route_metrics import (
@@ -40,15 +41,17 @@ _MAX_LZ_SLOPE_DEG = 8.0
 _LZ_HALF_M = 15.0
 _SQ_FT_PER_SQ_M = 10.763910416709722
 _LZ_REACH_COST_WEIGHT = 0.02
+_APPROACH_CHECK_LIMIT = 40
+_ONE_SIDED_APPROACH_FACTOR = 0.7
 
 _LZ_ASSESSED = [
     LandingZoneCriterion.SLOPE,
     LandingZoneCriterion.FOOTPRINT,
     LandingZoneCriterion.REACHABILITY,
+    LandingZoneCriterion.APPROACH_CLEARANCE,
 ]
 _LZ_UNASSESSED = [
     LandingZoneCriterion.CANOPY,
-    LandingZoneCriterion.APPROACH_CLEARANCE,
 ]
 _DEM_LABEL = {
     ELEVATION_SOURCE_CACHED: "cached USGS 3DEP elevation (10 m)",
@@ -59,9 +62,10 @@ _DEM_LABEL = {
 def _lz_notes(source: str) -> str:
     dem = _DEM_LABEL.get(source, source)
     return (
-        f"Slope-only suitability over the pad footprint, from {dem}. Pad is "
-        "verified reachable under the carry slope ceiling. Canopy over the pad "
-        "and approach/departure clearance are NOT assessed — this site is not "
+        f"Suitability from pad-footprint slope and approach clearance, on {dem}. "
+        "The pad is reachable under the carry slope ceiling, and approach "
+        "bearings are clear of TERRAIN only — trees, wires, and towers are not "
+        "modelled, and canopy over the pad is NOT assessed. This site is not "
         "cleared for a helicopter on these numbers alone."
     )
 _ROUTE_NOTES = (
@@ -98,15 +102,16 @@ class YTrailGisRouter(GisRouter):
 
         subject_cell = grid.index_of(subject)
         reach_cost, came_from = cost_field(grid, subject_cell, surface.step_cost)
-        lz_cell = _select_landing_zone(grid, reach_cost)
-        if lz_cell is None:
+        selection = _select_landing_zone(grid, reach_cost)
+        if selection is None:
             return [], None
+        lz_cell, approach_bearings = selection
 
         carry_path = trace_path(came_from, subject_cell, lz_cell)
         if carry_path is None:
             return [], None
 
-        landing_zone = _to_landing_zone(job.id, grid, lz_cell)
+        landing_zone = _to_landing_zone(job.id, grid, lz_cell, approach_bearings)
         route = _build_route(job.id, grid, carry_path, landing_zone.id, reach_cost[lz_cell])
         return [landing_zone], route
 
@@ -121,23 +126,41 @@ def _footprint_max_slope(slope: np.ndarray, radius: int) -> np.ndarray:
     return worst
 
 
-def _select_landing_zone(grid: TerrainGrid, reach_cost: dict[Cell, float]) -> Cell | None:
+def _select_landing_zone(
+    grid: TerrainGrid, reach_cost: dict[Cell, float]
+) -> tuple[Cell, list[int]] | None:
     radius = max(1, round(_LZ_HALF_M / grid.cell_meters))
     worst = _footprint_max_slope(grid.slope, radius)
     candidates = [
-        (cell, cost)
-        for cell, cost in reach_cost.items()
-        if worst[cell] <= _MAX_LZ_SLOPE_DEG
+        (cell, cost) for cell, cost in reach_cost.items() if worst[cell] <= _MAX_LZ_SLOPE_DEG
     ]
     if not candidates:
-        reachable = list(reach_cost.items())
-        if not reachable:
-            return None
-        return min(reachable, key=lambda item: (worst[item[0]], item[1]))[0]
-    return min(candidates, key=lambda item: worst[item[0]] + item[1] * _LZ_REACH_COST_WEIGHT)[0]
+        candidates = sorted(reach_cost.items(), key=lambda item: (worst[item[0]], item[1]))[:8]
+    if not candidates:
+        return None
+
+    ranked = sorted(candidates, key=lambda item: worst[item[0]] + item[1] * _LZ_REACH_COST_WEIGHT)
+    approachable = []
+    for cell, cost in ranked[:_APPROACH_CHECK_LIMIT]:
+        bearings = clear_approach_bearings(grid, cell)
+        if bearings:
+            approachable.append((cell, cost, bearings))
+    if not approachable:
+        return None
+
+    best = min(
+        approachable,
+        key=lambda item: (
+            0 if has_opposing_pair(item[2]) else 1,
+            worst[item[0]] + item[1] * _LZ_REACH_COST_WEIGHT,
+        ),
+    )
+    return best[0], best[2]
 
 
-def _to_landing_zone(job_id: str, grid: TerrainGrid, cell: Cell) -> LandingZone:
+def _to_landing_zone(
+    job_id: str, grid: TerrainGrid, cell: Cell, approach_bearings: list[int]
+) -> LandingZone:
     centroid = grid.point_at(*cell)
     dlat = _LZ_HALF_M / 111_320.0
     dlng = _LZ_HALF_M / (111_320.0 * max(0.2, math.cos(math.radians(centroid.lat))))
@@ -156,7 +179,8 @@ def _to_landing_zone(job_id: str, grid: TerrainGrid, cell: Cell) -> LandingZone:
         max_slope_degrees=max_slope,
         area_sq_ft=_bounds_area_sq_ft(bounds),
         canopy_fraction=None,
-        suitability_score=_slope_suitability(max_slope),
+        approach_bearings_degrees=approach_bearings,
+        suitability_score=_suitability(max_slope, approach_bearings),
         assessed_criteria=list(_LZ_ASSESSED),
         unassessed_criteria=list(_LZ_UNASSESSED),
         notes=_lz_notes(grid.source),
@@ -215,3 +239,15 @@ def _bounds_area_sq_ft(bounds: GeoBounds) -> float:
 
 def _slope_suitability(max_slope_degrees: float) -> float:
     return max(0.0, min(1.0, 1.0 - max_slope_degrees / _MAX_LZ_SLOPE_DEG))
+
+
+def _suitability(max_slope_degrees: float, approach_bearings: list[int]) -> float:
+    """Slope headroom, discounted when a crew has no choice of approach.
+
+    A pad reachable from one side only forces whatever line exists regardless of
+    wind, so it scores below an otherwise identical pad with an opposing pair.
+    """
+    if not approach_bearings:
+        return 0.0
+    approach = 1.0 if has_opposing_pair(approach_bearings) else _ONE_SIDED_APPROACH_FACTOR
+    return _slope_suitability(max_slope_degrees) * approach

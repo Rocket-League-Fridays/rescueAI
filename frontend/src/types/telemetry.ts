@@ -90,6 +90,13 @@ export interface LandingZone {
   canopyFraction?: number | null;
   /** 0..1, higher is better. Read `notes` for which criteria it accounts for. */
   suitabilityScore: number;
+  /**
+   * Compass bearings a helicopter can approach along, clear of TERRAIN only —
+   * trees, wires and towers are not modelled. Empty means no usable approach.
+   * Two opposing bearings beat many adjacent ones: a crew needs the into-wind
+   * line, not whatever single one exists.
+   */
+  approachBearingsDegrees: number[];
   /** Criteria this site was actually evaluated against. */
   assessedCriteria: LandingZoneCriterion[];
   /**
