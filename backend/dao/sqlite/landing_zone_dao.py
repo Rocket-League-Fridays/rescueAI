@@ -24,9 +24,9 @@ class SqliteLandingZoneDao(LandingZoneDao):
                     id, job_id, centroid_lat, centroid_lng,
                     bounds_sw_lat, bounds_sw_lng, bounds_ne_lat, bounds_ne_lng,
                     max_slope_degrees, area_sq_ft, canopy_fraction,
-                    suitability_score, assessed_criteria_json,
+                    suitability_score, approach_bearings_json, assessed_criteria_json,
                     unassessed_criteria_json, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
@@ -42,6 +42,7 @@ class SqliteLandingZoneDao(LandingZoneDao):
                         landing_zone.area_sq_ft,
                         landing_zone.canopy_fraction,
                         landing_zone.suitability_score,
+                        json.dumps(list(landing_zone.approach_bearings_degrees)),
                         json.dumps([c.value for c in landing_zone.assessed_criteria]),
                         json.dumps([c.value for c in landing_zone.unassessed_criteria]),
                         landing_zone.notes,
@@ -81,6 +82,7 @@ class SqliteLandingZoneDao(LandingZoneDao):
             area_sq_ft=row["area_sq_ft"],
             canopy_fraction=row["canopy_fraction"],
             suitability_score=row["suitability_score"],
+            approach_bearings_degrees=[int(b) for b in json.loads(row["approach_bearings_json"])],
             assessed_criteria=[
                 LandingZoneCriterion(value) for value in json.loads(row["assessed_criteria_json"])
             ],
