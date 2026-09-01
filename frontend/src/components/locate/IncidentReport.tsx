@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { StatusChip } from "@/components/ui";
 import { SubjectReviewFields } from "@/components/locate/SubjectReviewForm";
-import { isExtractorPlaceholder, summarizeTranscript } from "@/lib/event-summary";
+import { displaySubjectNotes, summarizeTranscript } from "@/lib/event-summary";
 import type { IncidentOverrides } from "@/lib/incident-overrides";
 import type { IncidentDetail } from "@/types/incident";
 import type { LastKnownPosition } from "@/types/search";
@@ -31,8 +31,8 @@ function formatOpened(iso: string): string {
 
 export function IncidentReport({ incident, overrides, lastKnown, onChange }: IncidentReportProps) {
   const summary = summarizeTranscript(incident.transcript);
-  const notes = incident.subject.notes.trim();
-  const showNotes = notes.length > 0 && !isExtractorPlaceholder(notes);
+  const notes = displaySubjectNotes(incident.subject.notes, incident.transcript);
+  const showNotes = notes.length > 0;
   const lastKnownLabel = `${lastKnown.point.lat.toFixed(5)}, ${lastKnown.point.lng.toFixed(5)}`;
   const [open, setOpen] = useState(true);
 

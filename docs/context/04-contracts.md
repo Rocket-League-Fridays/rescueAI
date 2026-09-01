@@ -71,7 +71,7 @@ Member 1 validation surface. Required on `POST /telemetry`.
 | `transcript` | raw distress text |
 | `subject.displayName` | e.g. Josh |
 | `subject.clothingColors` | `["red", ...]` |
-| `subject.notes` | extractor notes |
+| `subject.notes` | clothing / condition brief from transcript keywords (empty if none) |
 | `trailName` | e.g. `Y Mountain Trail` |
 | `trailLine` | GeoJSON-derived `GeoPoint[]` |
 | `status` | `open` \| `closed` |

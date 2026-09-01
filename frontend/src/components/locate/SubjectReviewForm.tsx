@@ -1,6 +1,7 @@
 "use client";
 
 import { FieldRow, Panel, inputClass } from "@/components/ui";
+import { displaySubjectNotes } from "@/lib/event-summary";
 import { fieldOrigin, type IncidentOverrides, type OverridableField } from "@/lib/incident-overrides";
 import type { IncidentDetail } from "@/types/incident";
 
@@ -62,7 +63,7 @@ export function SubjectReviewFields({ incident, overrides, onChange }: SubjectRe
           onRevert={() => revert("notes")}
         >
           <textarea
-            value={incident.subject.notes}
+            value={displaySubjectNotes(incident.subject.notes, incident.transcript)}
             rows={4}
             onChange={(event) => set("notes", event.target.value)}
             className={`${inputClass} resize-y`}

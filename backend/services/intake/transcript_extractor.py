@@ -50,12 +50,11 @@ class KeywordTranscriptExtractor(TranscriptExtractor):
             colors.append("gray")
         name = _extract_name(transcript)
         trail = _extract_trail(lowered)
-        notes = "Keyword extract from distress transcript (no LLM required)."
         return TranscriptExtract(
             subject=SubjectProfile(
                 display_name=name,
                 clothing_colors=colors or ["red"],
-                notes=notes,
+                notes=_extract_notes(transcript),
             ),
             trail_name=trail,
             last_known=_extract_last_known(transcript),
@@ -75,6 +74,53 @@ def _extract_name(transcript: str) -> str:
     if match:
         return "Calvin"
     return "Unknown subject"
+
+
+_MODIFIER = r"bright|dark|small|large|grade"
+_GARMENT = r"rain jacket|hiking pants|jacket|pants|hoodie|waders|day\s*pack|backpack|pack|shirt|hat"
+_GARMENT_RE = re.compile(
+    rf"\b(?:(?:{_MODIFIER}|{'|'.join(_COLOR_WORDS)})\s+)+(?:{_GARMENT})\b",
+    re.IGNORECASE,
+)
+_OVERNIGHT_RE = re.compile(
+    r"\b(?:no|not|n't|without|didn't|does not|doesn't)\b.{0,28}\bovernight\b"
+)
+_PHONE_RE = re.compile(r"\bdropped call\b|\bno working phone\b|\bphone is dead\b")
+_INJURY_RE = re.compile(r"\b(?:ankle|sprain|injur|immobile|moving slow)\b")
+
+
+def _pretty_garment(phrase: str) -> str:
+    cleaned = re.sub(r"\s+", " ", phrase.lower().strip())
+    cleaned = cleaned.replace("grade ", "gray ")
+    cleaned = cleaned.replace("day pack", "daypack")
+    return cleaned[:1].upper() + cleaned[1:]
+
+
+def _join_phrases(phrases: list[str]) -> str:
+    if len(phrases) == 1:
+        return phrases[0]
+    if len(phrases) == 2:
+        return f"{phrases[0]} and {phrases[1]}"
+    return f"{', '.join(phrases[:-1])}, and {phrases[-1]}"
+
+
+def _extract_notes(transcript: str) -> str:
+    lowered = transcript.lower()
+    garments: list[str] = []
+    for match in _GARMENT_RE.finditer(lowered):
+        phrase = _pretty_garment(match.group(0))
+        if phrase not in garments:
+            garments.append(phrase)
+    parts: list[str] = []
+    if garments:
+        parts.append(f"{_join_phrases(garments)}.")
+    if _INJURY_RE.search(lowered):
+        parts.append("Recent injury, likely slow or immobile.")
+    if _OVERNIGHT_RE.search(lowered):
+        parts.append("No overnight gear.")
+    if _PHONE_RE.search(lowered):
+        parts.append("No working phone.")
+    return " ".join(parts)
 
 
 def _extract_last_known(transcript: str) -> GeoPoint | None:

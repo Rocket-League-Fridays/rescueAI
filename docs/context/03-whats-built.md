@@ -60,7 +60,7 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 
 ### Intake (real)
 
-- [`KeywordTranscriptExtractor`](../../backend/services/intake/transcript_extractor.py) — name / colors / Y-trail keywords / first lat/lng pair as `lastKnownPoint` / loose `missingMinutes` (no LLM required)
+- [`KeywordTranscriptExtractor`](../../backend/services/intake/transcript_extractor.py) — name / colors / clothing-condition notes / Y-trail keywords / first lat/lng pair as `lastKnownPoint` / loose `missingMinutes` (no LLM required)
 - [`TrailCatalog`](../../backend/services/intake/trail_catalog.py) — committed GeoJSON corridor
 - [`IncidentService`](../../backend/services/intake/incident_service.py)
 - [`score_likely_locations`](../../backend/services/locate/likely_locations.py) — trail-biased PLS hypotheses on `GET /incidents/{id}`

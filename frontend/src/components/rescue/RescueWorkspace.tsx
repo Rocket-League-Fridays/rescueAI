@@ -15,6 +15,7 @@ import { StreamViewer } from "@/components/StreamViewer";
 import { TacticalMap } from "@/components/TacticalMap";
 import { buttonGhost, buttonSecondary, EmptyState } from "@/components/ui";
 import { createApiClient } from "@/lib/api-client";
+import { displaySubjectNotes } from "@/lib/event-summary";
 import { createArtifactContentSource } from "@/lib/artifact-content";
 import { createOverrideStore } from "@/lib/incident-overrides";
 import { createSnapshotStore, type Staleness } from "@/lib/incident-snapshot";
@@ -187,9 +188,9 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
                 }`}
               />
             </dl>
-            {incident.subject.notes ? (
+            {displaySubjectNotes(incident.subject.notes, incident.transcript) ? (
               <p className="mt-3 border-t border-line-soft pt-3 text-xs leading-relaxed text-ink-400">
-                {incident.subject.notes}
+                {displaySubjectNotes(incident.subject.notes, incident.transcript)}
               </p>
             ) : null}
           </section>

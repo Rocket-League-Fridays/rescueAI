@@ -16,6 +16,35 @@ def test_extractor_reads_josh_and_red_and_y_trail() -> None:
     assert "red" in extracted.subject.clothing_colors
     assert extracted.trail_name == "Y Mountain Trail"
     assert extracted.last_known is None
+    assert "LLM" not in extracted.subject.notes
+    assert "red jacket" in extracted.subject.notes.lower()
+    assert "hiking pants" in extracted.subject.notes.lower()
+
+
+def test_extractor_notes_from_spoken_call_and_whisper_slips() -> None:
+    script = Path(__file__).resolve().parents[1].joinpath(
+        "demo/josh_missing_call_script.txt"
+    ).read_text()
+    spoken = script.split("——— READ THIS ———", 1)[1]
+    extracted = KeywordTranscriptExtractor().extract(spoken)
+    assert extracted.subject.display_name == "Josh"
+    assert "black" in extracted.subject.clothing_colors
+    assert "black rain jacket" in extracted.subject.notes.lower()
+    assert "black pants" in extracted.subject.notes.lower()
+    assert "daypack" in extracted.subject.notes.lower()
+    assert "injury" in extracted.subject.notes.lower()
+    assert "overnight" in extracted.subject.notes.lower()
+
+    whispered = (
+        "His name is Josh. He was wearing a black rain jacket and black pants, "
+        "and he had a small grade day pack. He turned his ankle last month. "
+        "He didn't know overnight gear. Last contact was a dropped call."
+    )
+    whisper_notes = KeywordTranscriptExtractor().extract(whispered).subject.notes.lower()
+    assert "black rain jacket" in whisper_notes
+    assert "gray daypack" in whisper_notes
+    assert "overnight" in whisper_notes
+    assert "phone" in whisper_notes
 
 
 def test_extractor_reads_calvin_and_river_coords() -> None:
