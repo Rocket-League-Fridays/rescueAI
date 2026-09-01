@@ -86,7 +86,7 @@ Metadata lives in `backend/data/sar.db`. Videos and frames live in `backend/data
 | --- | --- | --- |
 | 1 — Data pipeline | Ingest, OpenCV frames, SAHI, SRT/watch folder, incident attach | `OpenCvFrameExtractor`, `IngestWatcher`, `IncidentService` |
 | 2 — Computer vision | YOLO11 person + clothing HSV + NMS/restitch | `ClothingScoringCvPipeline` |
-| 3 — GIS | Cached 3DEP terrain, carry cost surface, A*, LZ + walk-back | `YTrailGisRouter` |
+| 3 — GIS | Cached 3DEP terrain, carry cost surface, A*, LZ + carry route | `YTrailGisRouter` |
 | 4 — Frontend | Intake → corridor → find → LZ dashboard | `DashboardPresenter`, `TacticalMap` |
 
 Do not instantiate SQLite or stub classes outside `main.py` / factories. Inject `DaoFactory` and service interfaces.
@@ -102,7 +102,7 @@ pytest
 - Invalid telemetry → 422
 - Valid telemetry → job created (`queued`)
 - Job DAO save/get round-trip
-- GIS stub returns empty results; Y-trail router returns LZ + walk-back
+- GIS stub returns empty results; Y-trail router returns an LZ and a carry route that ends there
 - OpenCV extractor, SAHI tiler, DJI SRT, watcher, pinhole georeference
 - Incident extract + corridor + clothing HSV + situation + inbox `incidentId`
 

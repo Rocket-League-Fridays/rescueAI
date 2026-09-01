@@ -143,3 +143,24 @@ consumes the search planner, Rescue consumes the GIS router.
 
 **Rejected:** A global store alone (page 2 blanks on reload). Addressing the fixture by its UUID
 (the URL would look indistinguishable from a real incident).
+
+## D20 — The carry route ends at the landing zone
+
+**Decision:** `YTrailGisRouter` returns a single `subject_link` leg: subject → LZ. It no longer
+appends `off_trail` and `on_trail` legs continuing to the trail and trailhead.
+
+**Why:** the LZ exists because a helicopter extracts from it. Routing *past* it to a trailhead
+described a ground evacuation nobody performs once an aircraft is inbound, and it inflated the
+headline number — `estimatedMinutes` read 67 min when the actual carry was 37, with 30 minutes of
+walking the team would never do.
+
+**Consequences:**
+
+- `estimatedMinutes` is now the carry an operator actually plans against.
+- `RouteLegKind.OFF_TRAIL` / `ON_TRAIL` stay in the enum. They still describe terrain honestly and
+  a future inbound-approach route would use them; removing them would break stored rows and the
+  frontend colour map for no gain.
+- `Route.legs[]` keeps its structure even at one leg. The tiling invariant in
+  [04-contracts.md](04-contracts.md) holds trivially, and an approach leg can be added later
+  without a contract change.
+- `trail_line` is still consumed — it sets the search corridor extent.

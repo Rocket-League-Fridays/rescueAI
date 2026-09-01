@@ -17,7 +17,7 @@ from models.domain import (
     RouteWaypoint,
     SituationAssessment,
 )
-from services.gis.astar import Cell, cost_field, find_path, path_cost, trace_path
+from services.gis.astar import Cell, cost_field, trace_path
 from services.gis.cost_surface import CarryCostSurface
 from services.gis.route_metrics import (
     CARRY_PACE_FACTOR,
@@ -39,7 +39,6 @@ from services.interface.gis_router import GisRouter
 _MAX_LZ_SLOPE_DEG = 8.0
 _LZ_HALF_M = 15.0
 _SQ_FT_PER_SQ_M = 10.763910416709722
-_TRAIL_TAIL_POINTS = 5
 _LZ_REACH_COST_WEIGHT = 0.02
 
 _LZ_ASSESSED = [
@@ -66,9 +65,10 @@ def _lz_notes(source: str) -> str:
         "cleared for a helicopter on these numbers alone."
     )
 _ROUTE_NOTES = (
-    "Least-cost carry route: loaded descent weighted above ascent, refusing "
-    "ground steeper than the carry ceiling. estimatedMinutes is the loaded "
-    "carry out; inboundMinutes is the same path walked unloaded."
+    "Least-cost carry route from the subject to the landing zone, where the "
+    "helicopter extracts. Loaded descent is weighted above ascent and ground "
+    "steeper than the carry ceiling is refused. estimatedMinutes is the loaded "
+    "carry; inboundMinutes is the same path walked unloaded on the way in."
 )
 
 
@@ -107,9 +107,7 @@ class YTrailGisRouter(GisRouter):
             return [], None
 
         landing_zone = _to_landing_zone(job.id, grid, lz_cell)
-        route = _build_route(
-            job.id, grid, surface, carry_path, trail, landing_zone.id, reach_cost[lz_cell]
-        )
+        route = _build_route(job.id, grid, carry_path, landing_zone.id, reach_cost[lz_cell])
         return [landing_zone], route
 
 
@@ -168,58 +166,27 @@ def _to_landing_zone(job_id: str, grid: TerrainGrid, cell: Cell) -> LandingZone:
 def _build_route(
     job_id: str,
     grid: TerrainGrid,
-    surface: CarryCostSurface,
     carry_path: list[Cell],
-    trail: list[GeoPoint],
     landing_zone_id: str,
     carry_cost: float,
 ) -> Route:
-    cells = list(carry_path)
-    trail_entry_index: int | None = None
-    trail_tail: list[GeoPoint] = []
-
-    if trail:
-        lz_cell = cells[-1]
-        to_trail, entry_index = _route_to_trail(grid, surface, lz_cell, trail)
-        if to_trail:
-            trail_entry_index = len(cells) - 1
-            cells.extend(to_trail[1:])
-            trail_tail = list(reversed(trail[: entry_index + 1][-_TRAIL_TAIL_POINTS:]))[1:]
-
     waypoints = [
         RouteWaypoint(
             lat=grid.point_at(*cell).lat,
             lng=grid.point_at(*cell).lng,
             elevation_meters=float(grid.elevation[cell]),
         )
-        for cell in cells
+        for cell in carry_path
     ]
-    off_trail_end = len(waypoints) - 1
-    waypoints.extend(
-        RouteWaypoint(lat=point.lat, lng=point.lng, elevation_meters=grid.elevation_at(point))
-        for point in trail_tail
-    )
-
     legs = [
         build_leg(
             RouteLegKind.SUBJECT_LINK,
             "Subject to LZ",
             waypoints,
             0,
-            trail_entry_index if trail_entry_index is not None else len(carry_path) - 1,
+            len(waypoints) - 1,
         )
     ]
-    if trail_entry_index is not None and off_trail_end > trail_entry_index:
-        legs.append(
-            build_leg(RouteLegKind.OFF_TRAIL, "LZ to trail", waypoints, trail_entry_index, off_trail_end)
-        )
-    if len(waypoints) - 1 > off_trail_end:
-        legs.append(
-            build_leg(
-                RouteLegKind.ON_TRAIL, "Trail to trailhead", waypoints, off_trail_end, len(waypoints) - 1
-            )
-        )
-
     distance, elevation_gain, carry_minutes = summarize(legs)
     return Route(
         id=str(uuid4()),
@@ -234,26 +201,6 @@ def _build_route(
         legs=legs,
         notes=_ROUTE_NOTES,
     )
-
-
-def _route_to_trail(
-    grid: TerrainGrid,
-    surface: CarryCostSurface,
-    lz_cell: Cell,
-    trail: list[GeoPoint],
-) -> tuple[list[Cell], int]:
-    reach, came_from = cost_field(grid, lz_cell, surface.step_cost)
-    best_index = None
-    best_cost = math.inf
-    for index, point in enumerate(trail):
-        cell = grid.index_of(point)
-        cost = reach.get(cell)
-        if cost is not None and cost < best_cost:
-            best_cost, best_index = cost, index
-    if best_index is None:
-        return [], 0
-    path = trace_path(came_from, lz_cell, grid.index_of(trail[best_index]))
-    return (path or []), best_index
 
 
 def _bounds_area_sq_ft(bounds: GeoBounds) -> float:

@@ -69,19 +69,12 @@ const waypoints: RouteWaypoint[] = [
   { lat: 40.252, lng: -111.6188, elevationMeters: 2061 },
   { lat: 40.25182, lng: -111.61915, elevationMeters: 2072 },
   { lat: 40.2516, lng: -111.6195, elevationMeters: 2079 },
-  { lat: 40.2514, lng: -111.61962, elevationMeters: 2070 },
-  { lat: 40.2512, lng: -111.61975, elevationMeters: 2058 },
-  { lat: 40.25105, lng: -111.61988, elevationMeters: 2049 },
-  { lat: 40.25095, lng: -111.6201, elevationMeters: 2041 },
-  { lat: 40.25055, lng: -111.6205, elevationMeters: 2018 },
-  { lat: 40.25015, lng: -111.6209, elevationMeters: 2023 },
-  { lat: 40.24975, lng: -111.6214, elevationMeters: 1998 },
-  { lat: 40.24935, lng: -111.6219, elevationMeters: 1974 },
 ];
 
 // Distance/gain/minutes below were computed from these waypoints with the
 // backend route_metrics math (haversine at R=6371000, positive-delta gain only,
-// Naismith 12 min/km + 10 min/100 m, pace 1.6 off-trail/subject-link, 1.0 on-trail).
+// Naismith 12 min/km + 10 min/100 m). Leg minutes use the loaded carry pace
+// (2.8 subject-link); inboundMinutes uses the unloaded team pace (1.6).
 const legs: RouteLeg[] = [
   {
     kind: "subject_link",
@@ -90,25 +83,7 @@ const legs: RouteLeg[] = [
     endIndex: 3,
     distanceMeters: 108.36,
     elevationGainMeters: 18,
-    estimatedMinutes: 4.96,
-  },
-  {
-    kind: "off_trail",
-    label: "Bench descent to trail junction",
-    startIndex: 3,
-    endIndex: 7,
-    distanceMeters: 91.01,
-    elevationGainMeters: 0,
-    estimatedMinutes: 1.75,
-  },
-  {
-    kind: "on_trail",
-    label: "Y Mountain Trail walk-back toward trailhead",
-    startIndex: 7,
-    endIndex: 11,
-    distanceMeters: 234.85,
-    elevationGainMeters: 5,
-    estimatedMinutes: 3.32,
+    estimatedMinutes: 8.68,
   },
 ];
 
@@ -118,13 +93,13 @@ const route: Route = {
   waypoints,
   totalCost: 712.4,
   landingZoneId: LZ_BENCH_ID,
-  distanceMeters: 434.22,
-  elevationGainMeters: 23,
-  estimatedMinutes: 10.03,
-  inboundMinutes: 5.71,
+  distanceMeters: 108.36,
+  elevationGainMeters: 18,
+  estimatedMinutes: 8.68,
+  inboundMinutes: 4.96,
   legs,
   notes:
-    "Least-cost carry route: loaded descent weighted above ascent, refusing ground steeper than the carry ceiling. estimatedMinutes is the loaded carry out; inboundMinutes is the same path walked unloaded.",
+    "Least-cost carry route from the subject to the landing zone, where the helicopter extracts. Loaded descent is weighted above ascent and ground steeper than the carry ceiling is refused. estimatedMinutes is the loaded carry; inboundMinutes is the same path walked unloaded on the way in.",
 };
 
 const landingZones: LandingZone[] = [
