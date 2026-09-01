@@ -81,13 +81,25 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 
 ### Frontend (Member 4)
 
+Two operational pages (D19). Runs end to end with **no backend**; see
+[`07-frontend-data-map.md`](07-frontend-data-map.md) for every field it captures and displays.
+
 - Next.js App Router, TypeScript strict, Tailwind, dark tactical theme
-- `DashboardPresenter` + `DashboardView` — intake, demo fixture, attach sortie, and poll queued/processing jobs through terminal status
-- `ApiClient` — incidents, jobs, and artifact content URLs
-- `StreamViewer` — real source and annotated evidence frames; explicit progress / no-detection / failure states
-- Dashboard upload accepts latitude, longitude, and AGL instead of silently using the Y trailhead
-- `TacticalMap` — trail + buffer, Josh pin, LZ polygon, walk-back route
-- Clothing-match alert when `clothingMatchScore` is high
+- Routes: `/` (open incident) · `/locate/{id}` · `/rescue/{id}` · `mock` id serves the fixture
+- Presenters — `LocatePresenter`, `RescuePresenter` over a shared `IncidentPagePresenter`; all React-free (D9)
+- `ApiClient` — incidents, jobs, and artifact content URLs; `planSearchRoute` / `getSearchRoute` are wired but not yet served
+- **Locate:** draggable last-known pin + uncertainty ring, scan parameters (pattern / altitude AGL / overlap), search-route panel with legs and waypoints, route export, sortie attach, scan-results monitor polling `GET /jobs/{id}` through terminal status
+- Sortie telemetry takes lat/lng from the last-known pin and AGL from the scan parameters instead of silently using the Y trailhead
+- `StreamViewer` — real source and annotated evidence frames on the Rescue page, with explicit progress / no-detection / failure states; `ScanMonitor` on Locate stays numbers-only
+- **Rescue:** subject pin, ranked LZ polygons, per-leg walk-back route, route totals, elevation profile, waypoint table, situation card, clothing-match alert, ground-team brief, path export
+- `TacticalMap` — satellite/topo basemaps + trail and road overlays, corridor + buffer; `focus="locate" | "rescue"` selects emphasis
+- `RoutePanel` + `ElevationProfile` — route totals, ranked LZ readout, per-leg breakdown, elevation profile, waypoint table (coords / elevation / cumulative distance)
+- Subject / buffer / last-known review layer with `AUTO` vs `EDITED` provenance and revert, held client-side until the backend persists it
+- Never-blank refresh: last-known-good snapshot per incident id in `sessionStorage`; a failed or 404 refresh re-presents cached data with a staleness badge
+- Export — GeoJSON / CSV / KML, written in the browser (`lib/route-export.ts`)
+- `frontend/src/lib/geo.ts` — client-side haversine mirroring `route_metrics.haversine_m` so readouts match backend totals
+- `frontend/src/lib/route-colors.ts` — one color map per leg kind, shared by map, chart, and tables
+- `frontend/src/lib/mock-data.ts` — committed fixture (**Dev · load mock sortie**); metrics computed with the real `route_metrics` math
 
 ### Tests (pytest)
 
@@ -112,8 +124,7 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 
 ## Placeholders (UI only)
 
-- Raw / processed video panes — copy only, no streaming
-- Map tiles are OSM
+- [`fixture-search-planner.ts`](../../frontend/src/lib/fixture-search-planner.ts) — draws a lawnmower box so the Locate page is demoable. Geometry only: no terrain, airspace, wind, or battery. Always badged FIXTURE; delete once `POST /incidents/{id}/search-route` answers
 
 ## Not in the repo
 
@@ -122,6 +133,10 @@ Live DJI downlink, face ID, AllTrails, live 3DEP/Overpass as the only GIS path, 
 ## Demo script
 
 1. `./start_dev.sh`
-2. Dashboard: **Load Josh / Y fixture** → **Open incident** (trail + 80 m buffer)
-3. Drop Mini `DJI_*.MP4` + `.SRT` in `backend/data/inbox/` or **Process video**
-4. **Refresh after inbox drop** — person box, clothing %, Josh pin, canopy, LZ, walk-back
+2. `/` — **Load Josh / Y fixture** → **Open incident** (trail + 80 m buffer)
+3. Locate — drag the last-known pin, set altitude / overlap, **Plan search route**, export for the drone operator
+4. Drop Mini `DJI_*.MP4` + `.SRT` in `backend/data/inbox/` or **Run scan on footage**
+5. Scan results — person box, clothing %, subject fix → **Go to rescue**
+6. Rescue — Josh pin, canopy, ranked LZ, walk-back path, elevation profile
+
+No backend? `/locate/mock` and `/rescue/mock` walk the same flow on committed fixture data.

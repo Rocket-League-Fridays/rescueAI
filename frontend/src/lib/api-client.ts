@@ -1,4 +1,5 @@
 import type { CreateIncidentRequest, FixtureTranscript, Incident, IncidentDetail } from "@/types/incident";
+import type { SearchPlanRequest, SearchRoute } from "@/types/search";
 import type { CreateJobRequest, Job, JobDetail } from "@/types/telemetry";
 
 export class ApiClientError extends Error {
@@ -65,6 +66,20 @@ export class ApiClient {
 
   artifactContentUrl(artifactId: string): string {
     return `${this.baseUrl}/artifacts/${encodeURIComponent(artifactId)}/content`;
+  }
+
+  /** Not implemented by the backend yet — see `docs/context/07-frontend-seams.md`. */
+  async planSearchRoute(incidentId: string, request: SearchPlanRequest): Promise<SearchRoute> {
+    return this.request<SearchRoute>(`/incidents/${incidentId}/search-route`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+  }
+
+  /** Not implemented by the backend yet — see `docs/context/07-frontend-seams.md`. */
+  async getSearchRoute(incidentId: string): Promise<SearchRoute> {
+    return this.request<SearchRoute>(`/incidents/${incidentId}/search-route`);
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {

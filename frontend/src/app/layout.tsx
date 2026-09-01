@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Source_Sans_3 } from "next/font/google";
 
+import { CommandHeader } from "@/components/CommandHeader";
 import "./globals.css";
 
 const sourceSans = Source_Sans_3({
@@ -15,7 +16,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SAR Command Dashboard",
+  title: "RescueAI · SAR Command",
   description: "Search and Rescue tactical command dashboard",
 };
 
@@ -27,7 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${sourceSans.variable} ${ibmPlexMono.variable} font-sans`}>
-        {children}
+        <div className="min-h-screen">
+          <CommandHeader />
+          <main>{children}</main>
+        </div>
       </body>
     </html>
   );
