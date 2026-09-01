@@ -20,9 +20,8 @@ export interface Incident {
   situationId?: string | null;
   corridorBufferMeters: number;
   /**
-   * Operator's approximate last-known position for the subject. Optional because the backend
-   * does not persist it yet (see `docs/context/07-frontend-seams.md`); until it does, the
-   * frontend keeps it in the override layer.
+   * Approximate last-known position. Filled from a lat/lng pair in the distress transcript when
+   * present; operator pin drags stay in the override layer until PATCH exists.
    */
   lastKnownPoint?: GeoPoint | null;
   lastKnownRadiusMeters?: number | null;

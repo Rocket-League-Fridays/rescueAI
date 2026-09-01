@@ -14,11 +14,12 @@ import { SortieForm } from "@/components/locate/SortieForm";
 import { SubjectReviewForm } from "@/components/locate/SubjectReviewForm";
 import { TranscriptForm } from "@/components/locate/TranscriptForm";
 import { TacticalMap } from "@/components/TacticalMap";
-import { EmptyState } from "@/components/ui";
+import { buttonGhost, buttonPrimary, buttonSecondary, EmptyState } from "@/components/ui";
 import { createApiClient } from "@/lib/api-client";
 import { createOverrideStore, type IncidentOverrides } from "@/lib/incident-overrides";
 import { createSnapshotStore, type Staleness } from "@/lib/incident-snapshot";
-import { createIncidentSource } from "@/lib/incident-source";
+import { createIncidentSource, FIXTURE_INCIDENT_ID } from "@/lib/incident-source";
+import { createRecentIncidentStore } from "@/lib/recent-incident";
 import {
   createFixtureSearchRouteSource,
   createSearchRouteSource,
@@ -56,6 +57,8 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
   const [searchParameters, setSearchParameters] = useState<SearchParameters>(
     DEFAULT_SEARCH_PARAMETERS,
   );
+  /** Where the landing's Rescue tab points until the store says this tab has a better answer. */
+  const [rescueTarget, setRescueTarget] = useState(FIXTURE_INCIDENT_ID);
 
   const presenter = useMemo(() => {
     const view: LocateView = {
@@ -85,6 +88,7 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
       apiClient,
       createSearchRouteSource(apiClient),
       createFixtureSearchRouteSource(),
+      createRecentIncidentStore(),
     );
   }, []);
 
@@ -92,8 +96,17 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
     if (incidentId === null) {
       return;
     }
+    presenter.rememberIncident(incidentId);
     void presenter.hydrate(incidentId);
     return () => presenter.stopScanPolling();
+  }, [incidentId, presenter]);
+
+  // Read after mount: the recent-incident store is sessionStorage, which does not exist during
+  // prerender, so resolving this during render would desync the server and client markup.
+  useEffect(() => {
+    if (incidentId === null) {
+      setRescueTarget(presenter.rescueTargetIncidentId());
+    }
   }, [incidentId, presenter]);
 
   // Keep the planner form in step with whatever route is actually loaded.
@@ -142,10 +155,11 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
         transcript={transcript}
         isLoading={isLoading}
         errorMessage={errorMessage}
+        rescueTarget={rescueTarget}
         onTranscriptChange={setTranscript}
         onOpenIncident={() => void presenter.openIncident(transcript)}
         onLoadFixtureTranscript={() => void presenter.loadFixtureTranscript()}
-        onLoadMockSortie={() => presenter.loadMockSortie()}
+        onSeedData={() => presenter.seedMockIncident()}
       />
     );
   }
@@ -174,7 +188,7 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
           type="button"
           onClick={() => void presenter.refresh(incidentId)}
           disabled={isLoading}
-          className="rounded border border-olive-700 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-olive-300 hover:border-olive-500 disabled:opacity-40"
+          className={buttonGhost}
         >
           {isLoading ? "Refreshing…" : "Refresh"}
         </button>
@@ -253,21 +267,24 @@ function IntakeLanding({
   transcript,
   isLoading,
   errorMessage,
+  rescueTarget,
   onTranscriptChange,
   onOpenIncident,
   onLoadFixtureTranscript,
-  onLoadMockSortie,
+  onSeedData,
 }: {
   transcript: string;
   isLoading: boolean;
   errorMessage: string | null;
+  rescueTarget: string;
   onTranscriptChange(value: string): void;
   onOpenIncident(): void;
   onLoadFixtureTranscript(): void;
-  onLoadMockSortie(): void;
+  onSeedData(): void;
 }) {
   return (
     <div className="mx-auto max-w-5xl space-y-4 px-4 py-8">
+      <IncidentStageNav incidentId={rescueTarget} stage="locate" locateHref="/" />
       <div className="grid gap-4 md:grid-cols-2">
         <TranscriptForm
           transcript={transcript}
@@ -276,46 +293,58 @@ function IntakeLanding({
           onTranscriptChange={onTranscriptChange}
           onOpenIncident={onOpenIncident}
           onLoadFixtureTranscript={onLoadFixtureTranscript}
-          onLoadMockSortie={onLoadMockSortie}
         />
-        <FlowExplainer />
+        <FlowExplainer onSeedData={onSeedData} />
       </div>
       {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
     </div>
   );
 }
 
-function FlowExplainer() {
+function FlowExplainer({ onSeedData }: { onSeedData(): void }) {
   const steps = [
     ["1 · Locate", "Transcript in, last-known pin set, search route planned and exported."],
     ["2 · Scan", "Recorded sortie runs through detection and returns the subject's position."],
     ["3 · Rescue", "Landing zone sited and a walk-back path drawn for the ground team."],
   ];
   return (
-    <section className="rounded-lg border border-olive-700 bg-tactical-900 p-4">
-      <h2 className="font-mono text-xs uppercase tracking-widest text-olive-200">Flow</h2>
-      <ol className="mt-3 space-y-3">
-        {steps.map(([title, body]) => (
-          <li key={title} className="border-l-2 border-olive-700 pl-3">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-olive-300">
-              {title}
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-olive-400">{body}</p>
+    <section className="rounded-lg border border-line bg-surface-raised p-5 shadow-panel">
+      <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">Flow</h2>
+      <ol className="mt-4 space-y-4">
+        {steps.map(([title, body], index) => (
+          <li key={title} className="flex gap-3">
+            <span
+              className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border border-line-strong bg-surface-sunken font-mono text-[11px] text-ink-300"
+              aria-hidden
+            >
+              {index + 1}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold tracking-tight text-ink-100">
+                {title.replace(/^\d+ · /, "")}
+              </p>
+              <p className="mt-0.5 text-[13px] leading-relaxed text-ink-400">{body}</p>
+            </div>
           </li>
         ))}
       </ol>
-      <p className="mt-4 rounded border border-dashed border-olive-800 px-3 py-2 text-[10px] leading-relaxed text-olive-500">
-        No backend needed to walk the interface — use{" "}
-        <span className="text-olive-300">Dev · load mock sortie</span> for the committed fixture.
-        Fixture data is always badged.
-      </p>
+      <div className="mt-5 rounded-md border border-dashed border-line-soft p-3">
+        <button type="button" onClick={onSeedData} className={`${buttonPrimary} w-full`}>
+          Seed data
+        </button>
+        <p className="mt-2.5 text-[12px] leading-relaxed text-ink-500">
+          Fills every beat from the committed fixture — subject, corridor, planned search route,
+          scan detections, frame evidence, landing zones and the walk-back path. No backend needed
+          to walk the interface. Fixture data is always badged.
+        </p>
+      </div>
     </section>
   );
 }
 
 function ErrorBanner({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-red-800 bg-red-950/60 px-3 py-2 text-sm text-red-200">
+    <div className="flex items-start gap-2.5 rounded-lg border border-status-critical/50 bg-status-critical/10 px-3 py-2.5 text-[13px] text-status-critical">
       {message}
     </div>
   );
@@ -332,24 +361,24 @@ function LoadingState() {
 function UnavailableState({ message, onRetry }: { message: string; onRetry(): void }) {
   return (
     <div className="mx-auto max-w-2xl space-y-3 px-4 py-16 text-center">
-      <h2 className="font-mono text-sm uppercase tracking-widest text-olive-200">
+      <h2 className="text-xl font-semibold tracking-tight text-ink-50">
         Incident unavailable
       </h2>
-      <p className="text-sm text-olive-400">{message}</p>
-      <p className="text-xs text-olive-500">
+      <p className="text-sm text-ink-400">{message}</p>
+      <p className="text-xs text-ink-500">
         Nothing cached in this tab for that id, and the server did not answer.
       </p>
       <div className="flex justify-center gap-2 pt-2">
         <button
           type="button"
           onClick={onRetry}
-          className="rounded border border-olive-600 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-olive-200 hover:border-olive-400"
+          className={buttonSecondary}
         >
           Retry
         </button>
         <Link
           href="/"
-          className="rounded border border-olive-700 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-olive-400 hover:border-olive-500"
+          className={buttonGhost}
         >
           New incident
         </Link>

@@ -72,11 +72,11 @@ export function LastKnownForm({ lastKnown, source, onChange, onRevert }: LastKno
           <div className="flex items-baseline justify-between">
             <label
               htmlFor="last-known-radius"
-              className="font-mono text-[10px] uppercase tracking-widest text-olive-400"
+              className="font-mono text-[11px] uppercase tracking-label text-ink-400"
             >
               Uncertainty radius
             </label>
-            <span className="font-mono text-xs text-olive-100">
+            <span className="font-mono text-xs text-ink-100">
               {Math.round(lastKnown.radiusMeters)} m
             </span>
           </div>
@@ -90,15 +90,15 @@ export function LastKnownForm({ lastKnown, source, onChange, onRevert }: LastKno
             onChange={(event) =>
               onChange({ ...lastKnown, radiusMeters: Number(event.target.value) })
             }
-            className="w-full accent-amber-400"
+            className="w-full accent-accent-400"
           />
-          <p className="text-[10px] text-olive-500">
+          <p className="text-[12px] leading-relaxed text-ink-500">
             Sets the area the search pattern has to cover.
           </p>
         </div>
 
         {source === "assumed" ? (
-          <p className="rounded border border-olive-800 bg-tactical-950 px-2 py-1.5 text-[10px] text-olive-500">
+          <p className="rounded border border-line-soft bg-surface-sunken px-2 py-1.5 text-[12px] leading-relaxed text-ink-500">
             No position came from the transcript — the corridor midpoint is standing in. Correct it
             before planning.
           </p>

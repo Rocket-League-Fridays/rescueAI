@@ -25,17 +25,18 @@ class IncidentService:
         self._corridor_buffer_meters = corridor_buffer_meters
 
     def create_from_transcript(self, transcript: str) -> Incident:
-        subject, trail_name = self._extractor.extract(transcript)
+        extracted = self._extractor.extract(transcript)
         now = datetime.now(timezone.utc)
         incident = Incident(
             id=str(uuid4()),
             transcript=transcript.strip(),
-            subject=subject,
-            trail_name=trail_name,
-            trail_line=self._catalog.load_line(trail_name),
+            subject=extracted.subject,
+            trail_name=extracted.trail_name,
+            trail_line=self._catalog.load_line(extracted.trail_name),
             status=IncidentStatus.OPEN,
             created_at=now,
             updated_at=now,
+            last_known_point=extracted.last_known,
         )
         self._dao_factory.create_incident_dao().save(incident)
         return incident

@@ -59,7 +59,7 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 
 ### Intake (real)
 
-- [`KeywordTranscriptExtractor`](../../backend/services/intake/transcript_extractor.py) — name / colors / Y-trail keywords (no LLM required)
+- [`KeywordTranscriptExtractor`](../../backend/services/intake/transcript_extractor.py) — name / colors / Y-trail keywords / first lat/lng pair as `lastKnownPoint` (no LLM required)
 - [`TrailCatalog`](../../backend/services/intake/trail_catalog.py) — committed GeoJSON corridor
 - [`IncidentService`](../../backend/services/intake/incident_service.py)
 
@@ -97,7 +97,7 @@ Two operational pages (D19). Runs end to end with **no backend**; see
 - **Rescue:** subject pin, ranked LZ polygons, per-leg walk-back route, route totals, elevation profile, waypoint table, situation card, clothing-match alert, ground-team brief, path export
 - `TacticalMap` — satellite/topo basemaps + trail and road overlays, corridor + buffer; `focus="locate" | "rescue"` selects emphasis
 - `RoutePanel` + `ElevationProfile` — route totals, ranked LZ readout, per-leg breakdown, elevation profile, waypoint table (coords / elevation / cumulative distance)
-- Subject / buffer / last-known review layer with `AUTO` vs `EDITED` provenance and revert, held client-side until the backend persists it
+- Subject / buffer / last-known review layer with `AUTO` vs `EDITED` provenance and revert. Transcript lat/lng is persisted as `lastKnownPoint`; pin drags stay client-side until PATCH
 - Never-blank refresh: last-known-good snapshot per incident id in `sessionStorage`; a failed or 404 refresh re-presents cached data with a staleness badge
 - Export — GeoJSON / CSV / KML, written in the browser (`lib/route-export.ts`)
 - `frontend/src/lib/geo.ts` — client-side haversine mirroring `route_metrics.haversine_m` so readouts match backend totals

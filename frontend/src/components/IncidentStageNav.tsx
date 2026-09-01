@@ -7,26 +7,50 @@ export type IncidentStage = "locate" | "rescue";
 interface IncidentStageNavProps {
   incidentId: string;
   stage: IncidentStage;
-  /** Rescue stays locked until the scan has actually produced a position to walk to. */
-  rescueReady: boolean;
+  /**
+   * Rescue is always reachable; this only flags whether the scan has produced a fix yet. Omit it
+   * where readiness is genuinely unknown — the intake landing has not loaded an incident — so the
+   * nav reports nothing rather than claiming "no fix yet".
+   */
+  rescueReady?: boolean;
+  /** The intake landing is the Locate beat but lives at `/`, with no incident in the URL. */
+  locateHref?: string;
 }
 
-export function IncidentStageNav({ incidentId, stage, rescueReady }: IncidentStageNavProps) {
+/**
+ * Both beats are always navigable — an operator can look ahead to the rescue view before the scan
+ * lands. Readiness is reported, never enforced.
+ */
+export function IncidentStageNav({
+  incidentId,
+  stage,
+  rescueReady,
+  locateHref,
+}: IncidentStageNavProps) {
   return (
-    <nav className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest">
+    <nav
+      aria-label="Incident stage"
+      className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-raised p-1"
+    >
       <StageLink
-        href={`/locate/${incidentId}`}
-        label="1 · Locate"
+        href={locateHref ?? `/locate/${incidentId}`}
+        step="1"
+        label="Locate"
         active={stage === "locate"}
-        enabled
       />
-      <span className="text-olive-700">›</span>
       <StageLink
         href={`/rescue/${incidentId}`}
-        label="2 · Rescue"
+        step="2"
+        label="Rescue"
         active={stage === "rescue"}
-        enabled={rescueReady || stage === "rescue"}
-        disabledHint="Waiting on a subject fix from the scan"
+        state={rescueReady === undefined ? undefined : rescueReady ? "ready" : "waiting"}
+        hint={
+          rescueReady === undefined
+            ? "Open the rescue beat for the last incident in this tab"
+            : rescueReady
+              ? "Subject fix available"
+              : "No subject fix from the scan yet"
+        }
       />
     </nav>
   );
@@ -34,39 +58,45 @@ export function IncidentStageNav({ incidentId, stage, rescueReady }: IncidentSta
 
 function StageLink({
   href,
+  step,
   label,
   active,
-  enabled,
-  disabledHint,
+  state,
+  hint,
 }: {
   href: string;
+  step: string;
   label: string;
   active: boolean;
-  enabled: boolean;
-  disabledHint?: string;
+  state?: "ready" | "waiting";
+  hint?: string;
 }) {
-  const base = "rounded border px-2.5 py-1.5";
-  if (active) {
-    return (
-      <span className={`${base} border-olive-500 bg-olive-800/50 text-olive-100`}>{label}</span>
-    );
-  }
-  if (!enabled) {
-    return (
-      <span
-        title={disabledHint}
-        className={`${base} cursor-not-allowed border-olive-800 text-olive-600`}
-      >
-        {label}
-      </span>
-    );
-  }
+  const dotClass =
+    state === "ready"
+      ? "bg-status-confirmed"
+      : state === "waiting"
+        ? "bg-status-stale/60"
+        : "hidden";
+
   return (
     <Link
       href={href}
-      className={`${base} border-olive-700 text-olive-300 hover:border-olive-500 hover:text-olive-100`}
+      title={hint}
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-2 rounded-md px-3.5 py-2 text-[13px] font-semibold tracking-tight transition-colors ${
+        active
+          ? "bg-accent-400/15 text-accent-300 shadow-[inset_0_0_0_1px_rgb(255_176_32_/_0.35)]"
+          : "text-ink-400 hover:bg-surface-hover hover:text-ink-100"
+      }`}
     >
+      <span
+        className={`font-mono text-[11px] ${active ? "text-accent-400" : "text-ink-600"}`}
+        aria-hidden
+      >
+        {step}
+      </span>
       {label}
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} aria-hidden />
     </Link>
   );
 }

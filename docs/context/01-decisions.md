@@ -138,7 +138,7 @@ consumes the search planner, Rescue consumes the GIS router.
   over a shared `IncidentPagePresenter` skeleton. All still React-free, per D9.
 - Operator edits to subject fields, corridor buffer, and the last-known pin are a **client-side
   review layer** with per-field `AUTO` / `EDITED` provenance, because the backend has no incident
-  PATCH and does not persist those values. See
+  PATCH. A lat/lng pair in the transcript is persisted as `lastKnownPoint` on create. See
   [`07-frontend-data-map.md`](07-frontend-data-map.md).
 
 **Rejected:** A global store alone (page 2 blanks on reload). Addressing the fixture by its UUID

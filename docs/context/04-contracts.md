@@ -77,6 +77,8 @@ Member 1 validation surface. Required on `POST /telemetry`.
 | `status` | `open` \| `closed` |
 | `situationId` | set after a sortie produces a `SituationAssessment` |
 | `corridorBufferMeters` | search buffer (default 80) |
+| `lastKnownPoint` | lat/lng pair pulled from the transcript when present |
+| `lastKnownRadiusMeters` | optional; operator radius is still client-side until PATCH |
 
 `GET /incidents/{id}` also nests `jobs[]` and `situation`.
 
@@ -180,7 +182,7 @@ SahiTiler.tile(image: ndarray) -> list[SahiTile]   # x, y, 640, 640, image (in-m
 CvPipeline.process(job: Job, frames: list[Artifact]) -> list[Detection]
 DetectionGeoreferencer.apply(detections, telemetry, frames, frame_poses?) -> list[Detection]
 GisRouter.route(job, telemetry, situation=None, trail_line=None) -> tuple[list[LandingZone], Route | None]
-TranscriptExtractor.extract(transcript) -> (SubjectProfile, trail_name)
+TranscriptExtractor.extract(transcript) -> TranscriptExtract  # subject, trail_name, last_known
 PersonDetector.detect(image) -> list[RawDetection]
 ```
 

@@ -36,7 +36,10 @@ CREATE TABLE IF NOT EXISTS incidents (
     status TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    situation_id TEXT
+    situation_id TEXT,
+    last_known_lat REAL,
+    last_known_lng REAL,
+    last_known_radius_meters REAL
 );
 
 CREATE TABLE IF NOT EXISTS jobs (
@@ -180,6 +183,14 @@ class SqliteConnectionProvider:
             connection.execute(
                 "ALTER TABLE detections ADD COLUMN clothing_match_score REAL NOT NULL DEFAULT 0"
             )
+        incident_cols = {row[1] for row in connection.execute("PRAGMA table_info(incidents)")}
+        for column, ddl in (
+            ("last_known_lat", "REAL"),
+            ("last_known_lng", "REAL"),
+            ("last_known_radius_meters", "REAL"),
+        ):
+            if column not in incident_cols:
+                connection.execute(f"ALTER TABLE incidents ADD COLUMN {column} {ddl}")
         job_cols = {row[1] for row in connection.execute("PRAGMA table_info(jobs)")}
         if "incident_id" not in job_cols:
             connection.execute("ALTER TABLE jobs ADD COLUMN incident_id TEXT")

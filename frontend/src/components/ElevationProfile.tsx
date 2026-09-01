@@ -40,8 +40,8 @@ export function ElevationProfile({ route }: ElevationProfileProps) {
 
   if (waypoints.length < 2) {
     return (
-      <div className="flex h-[180px] items-center justify-center rounded border border-olive-800 bg-tactical-900">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-olive-500">
+      <div className="flex h-[180px] items-center justify-center rounded border border-line-soft bg-surface-sunken">
+        <p className="font-mono text-[11px] uppercase tracking-label text-ink-500">
           Not enough waypoints for a profile
         </p>
       </div>
@@ -76,7 +76,7 @@ export function ElevationProfile({ route }: ElevationProfileProps) {
   }
 
   return (
-    <div className="rounded border border-olive-800 bg-tactical-900 py-2 pr-3">
+    <div className="rounded border border-line-soft bg-surface-sunken py-2 pr-3">
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 4, left: 0 }}>
           <defs>
@@ -144,8 +144,8 @@ function ElevationTooltip({ active, payload }: ElevationTooltipProps) {
     return null;
   }
   return (
-    <div className="rounded border border-olive-700 bg-tactical-950/95 px-2 py-1.5 font-mono text-[10px] text-olive-100 shadow-lg">
-      <p className="flex items-center gap-1.5 uppercase tracking-widest text-olive-300">
+    <div className="rounded border border-line bg-surface-sunken/95 px-2 py-1.5 font-mono text-[11px] text-ink-100 shadow-lg">
+      <p className="flex items-center gap-1.5 uppercase tracking-label text-ink-300">
         <span
           className="inline-block h-2 w-2 rounded-sm"
           style={{ backgroundColor: datum.legColor }}
@@ -153,7 +153,7 @@ function ElevationTooltip({ active, payload }: ElevationTooltipProps) {
         {datum.legLabel}
       </p>
       <p className="mt-1">{formatAxisDistance(datum.distanceMeters)} along route</p>
-      <p className="text-olive-300">{Math.round(datum.elevationMeters)} m elevation</p>
+      <p className="text-ink-300">{Math.round(datum.elevationMeters)} m elevation</p>
     </div>
   );
 }
