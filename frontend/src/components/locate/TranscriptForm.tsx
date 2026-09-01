@@ -2,7 +2,7 @@
 
 import { FormEvent } from "react";
 
-import { buttonPrimary, buttonSecondary, inputClass, Panel } from "@/components/ui";
+import { buttonPrimary, inputClass, Panel } from "@/components/ui";
 
 interface TranscriptFormProps {
   transcript: string;
@@ -10,7 +10,6 @@ interface TranscriptFormProps {
   isOpened: boolean;
   onTranscriptChange(value: string): void;
   onOpenIncident(): void;
-  onLoadFixtureTranscript(): void;
 }
 
 export function TranscriptForm({
@@ -19,7 +18,6 @@ export function TranscriptForm({
   isOpened,
   onTranscriptChange,
   onOpenIncident,
-  onLoadFixtureTranscript,
 }: TranscriptFormProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,17 +34,10 @@ export function TranscriptForm({
           value={transcript}
           onChange={(event) => onTranscriptChange(event.target.value)}
           rows={7}
-          placeholder="Paste the 911 / Scout leader transcript"
+          placeholder="Paste dispatch transcript here"
           className={`${inputClass} resize-y`}
         />
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onLoadFixtureTranscript}
-            className={`${buttonSecondary} flex-1`}
-          >
-            Load Josh / Y fixture
-          </button>
           <button
             type="submit"
             disabled={isLoading || !transcript.trim()}

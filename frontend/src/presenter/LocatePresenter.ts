@@ -1,7 +1,12 @@
 import { ApiClientError, type ApiClient } from "@/lib/api-client";
 import type { OverrideStore } from "@/lib/incident-overrides";
 import type { SnapshotStore } from "@/lib/incident-snapshot";
-import { FIXTURE_INCIDENT_ID, isFixtureIncidentId, type IncidentSource } from "@/lib/incident-source";
+import {
+  FIXTURE_INCIDENT_ID,
+  isFixtureIncidentId,
+  NO_INCIDENT_ID,
+  type IncidentSource,
+} from "@/lib/incident-source";
 import type { RecentIncidentStore } from "@/lib/recent-incident";
 import type { SearchRouteSource } from "@/lib/search-route-source";
 import { sortieRequest } from "@/lib/sortie-request";
@@ -68,15 +73,24 @@ export class LocatePresenter extends IncidentPagePresenter<LocateView> {
 
   /**
    * Where the Rescue beat should go when the URL carries no incident, as on the intake landing:
-   * the one this tab last worked, and otherwise the fixture so the beat is never a dead link.
+   * the one this tab last worked, and otherwise the "no incident" placeholder — never the fixture,
+   * or the beat would silently show demo data before any real incident exists.
    */
   rescueTargetIncidentId(): string {
-    return this.recentIncidents.read() ?? FIXTURE_INCIDENT_ID;
+    return this.recentIncidents.read() ?? NO_INCIDENT_ID;
   }
 
   /** Called by the page once an incident id is known, so the landing can offer it again later. */
   rememberIncident(incidentId: string): void {
     this.recentIncidents.write(incidentId);
+  }
+
+  /**
+   * Called when the intake landing mounts with no incident in the URL — the operator followed
+   * "New incident" or the title, so the Rescue tab must stop pointing at whatever was last open.
+   */
+  forgetRecentIncident(): void {
+    this.recentIncidents.clear();
   }
 
   updateLastKnown(incidentId: string, position: LastKnownPosition): void {
