@@ -2,6 +2,7 @@ import { ApiClientError, type ApiClient } from "@/lib/api-client";
 import type { OverrideStore } from "@/lib/incident-overrides";
 import type { SnapshotStore } from "@/lib/incident-snapshot";
 import { FIXTURE_INCIDENT_ID, isFixtureIncidentId, type IncidentSource } from "@/lib/incident-source";
+import type { RecentIncidentStore } from "@/lib/recent-incident";
 import type { SearchRouteSource } from "@/lib/search-route-source";
 import { sortieRequest } from "@/lib/sortie-request";
 import { IncidentPagePresenter, toErrorMessage } from "@/presenter/IncidentPagePresenter";
@@ -32,6 +33,7 @@ export class LocatePresenter extends IncidentPagePresenter<LocateView> {
     private readonly apiClient: ApiClient,
     private readonly liveSearchRoutes: SearchRouteSource,
     private readonly fixtureSearchRoutes: SearchRouteSource,
+    private readonly recentIncidents: RecentIncidentStore,
   ) {
     super(view, incidents, snapshots, overrides);
   }
@@ -58,9 +60,23 @@ export class LocatePresenter extends IncidentPagePresenter<LocateView> {
   }
 
   /** No network at all — the committed fixture is served from its reserved id. */
-  loadMockSortie(): void {
+  seedMockIncident(): void {
     this.view.clearErrorMessage();
+    this.recentIncidents.write(FIXTURE_INCIDENT_ID);
     this.view.navigateToLocate(FIXTURE_INCIDENT_ID);
+  }
+
+  /**
+   * Where the Rescue beat should go when the URL carries no incident, as on the intake landing:
+   * the one this tab last worked, and otherwise the fixture so the beat is never a dead link.
+   */
+  rescueTargetIncidentId(): string {
+    return this.recentIncidents.read() ?? FIXTURE_INCIDENT_ID;
+  }
+
+  /** Called by the page once an incident id is known, so the landing can offer it again later. */
+  rememberIncident(incidentId: string): void {
+    this.recentIncidents.write(incidentId);
   }
 
   updateLastKnown(incidentId: string, position: LastKnownPosition): void {
@@ -157,6 +173,7 @@ export class LocatePresenter extends IncidentPagePresenter<LocateView> {
   private async adoptIncident(incidentId: string): Promise<void> {
     const snapshot = await this.incidents.load(incidentId);
     this.snapshots.write(snapshot);
+    this.recentIncidents.write(incidentId);
     this.snapshot = snapshot;
     this.present(snapshot);
     this.view.navigateToLocate(incidentId);

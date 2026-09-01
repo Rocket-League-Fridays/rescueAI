@@ -1,7 +1,15 @@
+import {
+  FIXTURE_ANNOTATED_ARTIFACT_ID,
+  FIXTURE_FRAME_ARTIFACT_ID,
+  FIXTURE_FRAME_HEIGHT,
+  FIXTURE_FRAME_INDEX,
+  FIXTURE_FRAME_WIDTH,
+} from "@/lib/fixture-frames";
 import { planFixtureSearchRoute } from "@/lib/fixture-search-planner";
 import type { IncidentDetail } from "@/types/incident";
 import type { LastKnownPosition, SearchRoute } from "@/types/search";
 import type {
+  Artifact,
   Detection,
   DroneTelemetry,
   GeoPoint,
@@ -246,11 +254,34 @@ const job: Job = {
   incidentId: INCIDENT_ID,
 };
 
+/** Content is resolved to drawn SVG by `fixture-artifact-content`, never fetched from the API. */
+const artifacts: Artifact[] = [
+  {
+    id: FIXTURE_FRAME_ARTIFACT_ID,
+    jobId: JOB_ID,
+    kind: "frame",
+    storageKey: "fixture/frame_000412.svg",
+    mimeType: "image/svg+xml",
+    width: FIXTURE_FRAME_WIDTH,
+    height: FIXTURE_FRAME_HEIGHT,
+    frameIndex: FIXTURE_FRAME_INDEX,
+  },
+  {
+    id: FIXTURE_ANNOTATED_ARTIFACT_ID,
+    jobId: JOB_ID,
+    kind: "annotated_frame",
+    storageKey: "fixture/frame_000412_annotated.svg",
+    mimeType: "image/svg+xml",
+    width: FIXTURE_FRAME_WIDTH,
+    height: FIXTURE_FRAME_HEIGHT,
+    frameIndex: FIXTURE_FRAME_INDEX,
+  },
+];
+
 export const mockJobDetail: JobDetail = {
   ...job,
   telemetry,
-  // The fixture carries no frame bytes, so the evidence panes stay in their empty state.
-  artifacts: [],
+  artifacts,
   detections,
   landingZones,
   route,

@@ -13,8 +13,9 @@ import { SituationCard } from "@/components/rescue/SituationCard";
 import { SubjectAlert } from "@/components/rescue/SubjectAlert";
 import { StreamViewer } from "@/components/StreamViewer";
 import { TacticalMap } from "@/components/TacticalMap";
-import { EmptyState } from "@/components/ui";
+import { buttonGhost, buttonSecondary, EmptyState } from "@/components/ui";
 import { createApiClient } from "@/lib/api-client";
+import { createArtifactContentSource } from "@/lib/artifact-content";
 import { createOverrideStore } from "@/lib/incident-overrides";
 import { createSnapshotStore, type Staleness } from "@/lib/incident-snapshot";
 import { createIncidentSource } from "@/lib/incident-source";
@@ -35,6 +36,7 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
   const [unavailable, setUnavailable] = useState<string | null>(null);
 
   const apiClient = useMemo(() => createApiClient(), []);
+  const artifactContent = useMemo(() => createArtifactContentSource(apiClient), [apiClient]);
   const presenter = useMemo(() => {
     const view: RescueView = {
       setIsLoading,
@@ -63,24 +65,24 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
   if (unavailable !== null) {
     return (
       <div className="mx-auto max-w-2xl space-y-3 px-4 py-16 text-center">
-        <h2 className="font-mono text-sm uppercase tracking-widest text-olive-200">
+        <h2 className="text-xl font-semibold tracking-tight text-ink-50">
           Incident unavailable
         </h2>
-        <p className="text-sm text-olive-400">{unavailable}</p>
-        <p className="text-xs text-olive-500">
+        <p className="text-sm text-ink-400">{unavailable}</p>
+        <p className="text-xs text-ink-500">
           Nothing cached in this tab for that id, and the server did not answer.
         </p>
         <div className="flex justify-center gap-2 pt-2">
           <button
             type="button"
             onClick={() => void presenter.hydrate(incidentId)}
-            className="rounded border border-olive-600 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-olive-200 hover:border-olive-400"
+            className={buttonSecondary}
           >
             Retry
           </button>
           <Link
             href={`/locate/${incidentId}`}
-            className="rounded border border-olive-700 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-olive-400 hover:border-olive-500"
+            className={buttonGhost}
           >
             Back to locate
           </Link>
@@ -113,7 +115,7 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
           type="button"
           onClick={() => void presenter.refresh(incidentId)}
           disabled={isLoading}
-          className="rounded border border-olive-700 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-olive-300 hover:border-olive-500 disabled:opacity-40"
+          className={buttonGhost}
         >
           {isLoading ? "Refreshing…" : "Refresh"}
         </button>
@@ -121,7 +123,7 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
 
       <DataOriginBanner origin={origin} staleness={staleness} />
       {errorMessage ? (
-        <div className="rounded-lg border border-red-800 bg-red-950/60 px-3 py-2 text-sm text-red-200">
+        <div className="flex items-start gap-2.5 rounded-lg border border-status-critical/50 bg-status-critical/10 px-3 py-2.5 text-[13px] text-status-critical">
           {errorMessage}
         </div>
       ) : null}
@@ -153,11 +155,6 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
               />
             }
           />
-          <StreamViewer
-            job={job ?? null}
-            subjectName={incident.subject.displayName || undefined}
-            artifactContentUrl={(artifactId) => apiClient.artifactContentUrl(artifactId)}
-          />
         </div>
 
         <aside className="space-y-4">
@@ -165,8 +162,8 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
             <SubjectAlert detections={clothingAlerts} incident={incident} />
           ) : null}
           {job?.situation ? <SituationCard situation={job.situation} /> : null}
-          <section className="rounded-lg border border-olive-700 bg-tactical-900 p-4">
-            <h2 className="font-mono text-xs uppercase tracking-widest text-olive-200">
+          <section className="rounded-lg border border-line bg-surface-raised p-4">
+            <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">
               Ground team brief
             </h2>
             <dl className="mt-3 space-y-2 text-xs">
@@ -184,11 +181,17 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
               />
             </dl>
             {incident.subject.notes ? (
-              <p className="mt-3 border-t border-olive-800 pt-3 text-xs leading-relaxed text-olive-400">
+              <p className="mt-3 border-t border-line-soft pt-3 text-xs leading-relaxed text-ink-400">
                 {incident.subject.notes}
               </p>
             ) : null}
           </section>
+          <StreamViewer
+            job={job ?? null}
+            subjectName={incident.subject.displayName || undefined}
+            artifactContentUrl={(artifactId) => artifactContent.urlFor(artifactId)}
+            stacked
+          />
         </aside>
       </div>
     </div>
@@ -198,8 +201,8 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
 function Brief({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="font-mono text-[10px] uppercase tracking-widest text-olive-500">{label}</dt>
-      <dd className="min-w-0 truncate text-right text-olive-100">{value}</dd>
+      <dt className="font-mono text-[11px] uppercase tracking-label text-ink-500">{label}</dt>
+      <dd className="min-w-0 truncate text-right text-ink-100">{value}</dd>
     </div>
   );
 }

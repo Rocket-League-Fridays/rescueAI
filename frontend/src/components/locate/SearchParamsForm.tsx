@@ -1,6 +1,6 @@
 "use client";
 
-import { Panel, inputClass } from "@/components/ui";
+import { buttonPrimary, inputClass, Panel } from "@/components/ui";
 import type { SearchParameters } from "@/presenter/LocatePresenter";
 import { SEARCH_PATTERN_LABELS, type SearchPatternKind } from "@/types/search";
 
@@ -28,7 +28,7 @@ export function SearchParamsForm({
         <div className="space-y-1">
           <label
             htmlFor="pattern"
-            className="font-mono text-[10px] uppercase tracking-widest text-olive-400"
+            className="font-mono text-[11px] uppercase tracking-label text-ink-400"
           >
             Pattern
           </label>
@@ -52,7 +52,7 @@ export function SearchParamsForm({
           <div className="space-y-1">
             <label
               htmlFor="altitude"
-              className="font-mono text-[10px] uppercase tracking-widest text-olive-400"
+              className="font-mono text-[11px] uppercase tracking-label text-ink-400"
             >
               Altitude AGL
             </label>
@@ -67,16 +67,16 @@ export function SearchParamsForm({
                 onChange={(event) =>
                   onChange({ ...parameters, altitudeAglMeters: Number(event.target.value) })
                 }
-                className={`${inputClass} font-mono text-xs`}
+                className={inputClass}
               />
-              <span className="font-mono text-[10px] text-olive-500">m</span>
+              <span className="font-mono text-xs text-ink-500">m</span>
             </div>
           </div>
 
           <div className="space-y-1">
             <label
               htmlFor="overlap"
-              className="font-mono text-[10px] uppercase tracking-widest text-olive-400"
+              className="font-mono text-[11px] uppercase tracking-label text-ink-400"
             >
               Overlap
             </label>
@@ -91,9 +91,9 @@ export function SearchParamsForm({
                 onChange={(event) =>
                   onChange({ ...parameters, overlapPercent: Number(event.target.value) })
                 }
-                className={`${inputClass} font-mono text-xs`}
+                className={inputClass}
               />
-              <span className="font-mono text-[10px] text-olive-500">%</span>
+              <span className="font-mono text-xs text-ink-500">%</span>
             </div>
           </div>
         </div>
@@ -102,11 +102,11 @@ export function SearchParamsForm({
           type="button"
           onClick={onPlan}
           disabled={disabled || isPlanning}
-          className="w-full rounded bg-amber-400 px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-tactical-950 disabled:opacity-50"
+          className={`${buttonPrimary} w-full`}
         >
           {isPlanning ? "Planning…" : "Plan search route"}
         </button>
-        <p className="text-[10px] text-olive-500">
+        <p className="text-[12px] leading-relaxed text-ink-500">
           Higher overlap means tighter transects and a longer flight.
         </p>
       </div>

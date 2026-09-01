@@ -2,7 +2,7 @@
 
 import { FormEvent, useRef } from "react";
 
-import { Panel } from "@/components/ui";
+import { buttonSecondary, Panel } from "@/components/ui";
 
 interface SortieFormProps {
   isLoading: boolean;
@@ -30,12 +30,12 @@ export function SortieForm({ isLoading, disabled, onAttach, onRefresh }: SortieF
           ref={videoInputRef}
           type="file"
           accept="video/*"
-          className="block w-full text-xs text-olive-200 file:mr-3 file:rounded file:border-0 file:bg-olive-800 file:px-2 file:py-1 file:text-olive-100"
+          className="block w-full text-xs text-ink-200 file:mr-3 file:rounded file:border-0 file:bg-surface-hover file:px-2 file:py-1 file:text-ink-100"
         />
         <button
           type="submit"
           disabled={isLoading || disabled}
-          className="w-full rounded border border-olive-600 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-olive-100 hover:border-olive-400 disabled:opacity-50"
+          className={`${buttonSecondary} w-full`}
         >
           Run scan on footage
         </button>
@@ -43,7 +43,7 @@ export function SortieForm({ isLoading, disabled, onAttach, onRefresh }: SortieF
           type="button"
           onClick={onRefresh}
           disabled={disabled}
-          className="w-full font-mono text-[10px] uppercase tracking-widest text-olive-400 hover:text-olive-200 disabled:opacity-40"
+          className="w-full text-xs font-semibold uppercase tracking-label text-ink-500 transition-colors hover:text-ink-200 disabled:opacity-40"
         >
           Refresh after inbox drop
         </button>
