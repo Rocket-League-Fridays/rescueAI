@@ -35,8 +35,9 @@ def test_extractor_reads_calvin_and_river_coords() -> None:
 def test_trail_catalog_loads_y_line() -> None:
     catalog = TrailCatalog(resolve_demo_dir("demo"))
     line = catalog.load_line("Y Mountain Trail")
-    assert len(line) > 5
-    assert line[0].lat == 40.24555
+    assert len(line) > 20
+    assert abs(line[0].lat - 40.244852) < 1e-5
+    assert abs(line[0].lng - (-111.627277)) < 1e-5
 
 
 def test_create_demo_incident_api(tmp_path: Path) -> None:
@@ -60,6 +61,13 @@ def test_create_demo_incident_api(tmp_path: Path) -> None:
     active = client.get("/incidents/active")
     assert active.status_code == 200
     assert active.json()["id"] == body["id"]
+    assert active.json()["missingMinutes"] == 60
+    assert active.json()["missingMinutesAssumed"] is True
+    locations = active.json()["likelyLocations"]
+    assert 1 <= len(locations) <= 5
+    assert 0 <= locations[0]["score"] <= 1
+    assert "reason" in locations[0]
+    assert "lat" in locations[0]["point"]
 
     fixture = client.get("/incidents/fixture")
     assert fixture.status_code == 200
@@ -108,3 +116,32 @@ def test_create_incident_persists_transcript_coords(tmp_path: Path) -> None:
     body = river.json()
     assert body["subject"]["displayName"] == "Calvin"
     assert body["lastKnownPoint"] == {"lat": 40.3884811, "lng": -111.5447873}
+
+
+def test_create_incident_uses_trailhead_when_call_says_he_started_there(tmp_path: Path) -> None:
+    settings = Settings(
+        database_path=str(tmp_path / "sar.db"),
+        artifacts_dir=str(tmp_path / "artifacts"),
+        ingest_dir=str(tmp_path / "inbox"),
+        ingest_watch_enabled=False,
+        yolo_enabled=False,
+        demo_dir=resolve_demo_dir("demo"),
+    )
+    client = TestClient(create_app(settings))
+    response = client.post(
+        "/incidents",
+        json={
+            "transcript": (
+                "His name is Josh. Red rain jacket and black hiking pants. "
+                "He started the hike two hours ago from the Y trailhead."
+            )
+        },
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["lastKnownPoint"] == {"lat": 40.244852, "lng": -111.627277}
+    assert body["missingMinutes"] == 120
+    detail = client.get(f"/incidents/{body['id']}")
+    assert detail.status_code == 200
+    assert detail.json()["missingMinutesAssumed"] is False
+    assert 1 <= len(detail.json()["likelyLocations"]) <= 5

@@ -43,11 +43,11 @@ export class LocatePresenter extends IncidentPagePresenter<LocateView> {
     super(view, incidents, snapshots, overrides);
   }
 
-  async loadFixtureTranscript(): Promise<void> {
+  async transcribeAudio(file: File): Promise<void> {
     await this.doFailureReportingOperation(async () => {
-      const fixture = await this.apiClient.getFixtureTranscript();
-      this.view.displayTranscriptDraft(fixture.transcript);
-    }, "Failed to load fixture transcript");
+      const result = await this.apiClient.transcribeAudio(file);
+      this.view.displayTranscriptDraft(result.transcript);
+    }, "Failed to transcribe audio");
   }
 
   async openIncident(transcript: string): Promise<void> {
@@ -106,27 +106,38 @@ export class LocatePresenter extends IncidentPagePresenter<LocateView> {
     lastKnown: LastKnownPosition,
     parameters: SearchParameters,
   ): Promise<void> {
-    const request: SearchPlanRequest = { incidentId, lastKnown, ...parameters };
-    const source = isFixtureIncidentId(incidentId) ? this.fixtureSearchRoutes : this.liveSearchRoutes;
+    const request: SearchPlanRequest = {
+      incidentId,
+      lastKnown,
+      ...parameters,
+      trailLine: this.snapshot?.incident.trailLine,
+      corridorBufferMeters: this.snapshot?.incident.corridorBufferMeters,
+      boxCenter: this.snapshot?.incident.likelyLocations?.[0]?.point ?? lastKnown.point,
+    };
+    const preferLive = !isFixtureIncidentId(incidentId);
 
     this.view.setIsPlanning(true);
     this.view.clearErrorMessage();
     try {
-      const route = await source.plan(request);
+      let route;
+      try {
+        route = preferLive
+          ? await this.liveSearchRoutes.plan(request)
+          : await this.fixtureSearchRoutes.plan(request);
+      } catch (error) {
+        if (preferLive && isMissingEndpoint(error)) {
+          route = await this.fixtureSearchRoutes.plan(request);
+        } else {
+          throw error;
+        }
+      }
       if (this.snapshot) {
         this.snapshot = { ...this.snapshot, searchRoute: route };
         this.present(this.snapshot);
       }
       this.view.displaySearchRoute(route);
     } catch (error) {
-      if (isMissingEndpoint(error)) {
-        this.view.displayPlannerUnavailable(
-          "Search planner is not wired up yet — POST /incidents/{id}/search-route returned nothing. " +
-            "Use Dev · load mock sortie to see the planned-route UI.",
-        );
-      } else {
-        this.view.displayErrorMessage(toErrorMessage(error, "Failed to plan search route"));
-      }
+      this.view.displayErrorMessage(toErrorMessage(error, "Failed to plan search route"));
     } finally {
       this.view.setIsPlanning(false);
     }

@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS incidents (
     situation_id TEXT,
     last_known_lat REAL,
     last_known_lng REAL,
-    last_known_radius_meters REAL
+    last_known_radius_meters REAL,
+    missing_minutes INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS jobs (
@@ -188,6 +189,7 @@ class SqliteConnectionProvider:
             ("last_known_lat", "REAL"),
             ("last_known_lng", "REAL"),
             ("last_known_radius_meters", "REAL"),
+            ("missing_minutes", "INTEGER"),
         ):
             if column not in incident_cols:
                 connection.execute(f"ALTER TABLE incidents ADD COLUMN {column} {ddl}")

@@ -10,7 +10,7 @@ Honest inventory. If it is not listed as **real**, treat it as a stub or placeho
 - [`backend/requirements.txt`](../../backend/requirements.txt)
 - [`frontend/package.json`](../../frontend/package.json)
 - [`.gitignore`](../../.gitignore) — venv, `node_modules`, `.next`, `backend/data/`, `*.db`
-- Demo fixtures (committed): [`backend/demo/`](../../backend/demo/) — Josh transcript + `y_mountain_trail.geojson`
+- Demo fixtures (committed): [`backend/demo/`](../../backend/demo/) — Josh transcript + OSM `y_mountain_trail.geojson` (switchbacks, trailhead to the Y)
 
 ### Contracts
 
@@ -32,8 +32,9 @@ Honest inventory. If it is not listed as **real**, treat it as a stub or placeho
 | `POST` | `/incidents` | Transcript → extract subject/trail → `IncidentOut` |
 | `POST` | `/incidents/demo` | Load Josh / Y fixture and open an incident |
 | `GET` | `/incidents/fixture` | Fixture transcript text only |
-| `GET` | `/incidents/active` | Latest open incident + jobs + situation |
-| `GET` | `/incidents/{id}` | Incident detail |
+| `POST` | `/incidents/transcribe` | Multipart `audio` → Whisper → `{transcript}` (does not open an incident) |
+| `GET` | `/incidents/active` | Latest open incident + jobs + situation + `likelyLocations` |
+| `GET` | `/incidents/{id}` | Incident detail + computed `likelyLocations` |
 | `POST` | `/telemetry` | JSON `CreateJobRequest` (optional `incidentId`) → `201` + `JobOut` |
 | `POST` | `/telemetry/upload` | Form `telemetry` + optional `incidentId` + `video` |
 | `GET` | `/jobs/{job_id}` | `JobDetailOut` (ids + nested telemetry/detections/LZs/route/situation) |
@@ -59,9 +60,11 @@ Sorties without `incidentId` attach to the **open** incident when one exists.
 
 ### Intake (real)
 
-- [`KeywordTranscriptExtractor`](../../backend/services/intake/transcript_extractor.py) — name / colors / Y-trail keywords / first lat/lng pair as `lastKnownPoint` (no LLM required)
+- [`KeywordTranscriptExtractor`](../../backend/services/intake/transcript_extractor.py) — name / colors / Y-trail keywords / first lat/lng pair as `lastKnownPoint` / loose `missingMinutes` (no LLM required)
 - [`TrailCatalog`](../../backend/services/intake/trail_catalog.py) — committed GeoJSON corridor
 - [`IncidentService`](../../backend/services/intake/incident_service.py)
+- [`score_likely_locations`](../../backend/services/locate/likely_locations.py) — trail-biased PLS hypotheses on `GET /incidents/{id}`
+- [`OpenAIWhisperTranscriber`](../../backend/services/intake/openai_whisper_transcriber.py) — `POST /incidents/transcribe`; `StubSpeechToText` when `SAR_OPENAI_API_KEY` is unset
 
 ### Computer vision (Member 2 — real when ultralytics loads)
 
@@ -89,6 +92,7 @@ Two operational pages (D19). Runs end to end with **no backend**; see
 
 - Next.js App Router, TypeScript strict, Tailwind, dark tactical theme
 - Routes: `/` (open incident) · `/locate/{id}` · `/rescue/{id}` · `mock` id serves the fixture
+- Intake: **Load Josh / Y fixture** or **Upload call / audio** (`POST /incidents/transcribe`) fills the transcript textarea; **Open incident** is unchanged
 - Presenters — `LocatePresenter`, `RescuePresenter` over a shared `IncidentPagePresenter`; all React-free (D9)
 - `ApiClient` — incidents, jobs, and artifact content URLs; `planSearchRoute` / `getSearchRoute` are wired but not yet served
 - **Locate:** draggable last-known pin + uncertainty ring, scan parameters (pattern / altitude AGL / overlap), search-route panel with legs and waypoints, route export, sortie attach, scan-results monitor polling `GET /jobs/{id}` through terminal status
@@ -127,7 +131,7 @@ Two operational pages (D19). Runs end to end with **no backend**; see
 
 ## Placeholders (UI only)
 
-- [`fixture-search-planner.ts`](../../frontend/src/lib/fixture-search-planner.ts) — draws a lawnmower box so the Locate page is demoable. Geometry only: no terrain, airspace, wind, or battery. Always badged FIXTURE; delete once `POST /incidents/{id}/search-route` answers
+- [`fixture-search-planner.ts`](../../frontend/src/lib/fixture-search-planner.ts) — corridor sweep flies the trail to the uncertainty circle, mows an expanding box inside it, then finishes the trail. Always FIXTURE.
 
 ## Not in the repo
 
@@ -136,7 +140,7 @@ Live DJI downlink, face ID, AllTrails, live 3DEP/Overpass as the only GIS path, 
 ## Demo script
 
 1. `./start_dev.sh`
-2. `/` — **Load Josh / Y fixture** → **Open incident** (trail + 80 m buffer)
+2. `/` — **Load Josh / Y fixture** or **Upload call / audio** → **Open incident** (trail + 80 m buffer)
 3. Locate — drag the last-known pin, set altitude / overlap, **Plan search route**, export for the drone operator
 4. Drop Mini `DJI_*.MP4` + `.SRT` in `backend/data/inbox/` or **Run scan on footage**
 5. Scan results — person box, clothing %, subject fix → **Go to rescue**

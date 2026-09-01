@@ -93,14 +93,15 @@ export function LastKnownForm({ lastKnown, source, onChange, onRevert }: LastKno
             className="w-full accent-accent-400"
           />
           <p className="text-[12px] leading-relaxed text-ink-500">
-            Sets the area the search pattern has to cover.
+            Drawn around the top likely-location, not the last-seen pin. Also sizes the search
+            cover.
           </p>
         </div>
 
         {source === "assumed" ? (
           <p className="rounded border border-line-soft bg-surface-sunken px-2 py-1.5 text-[12px] leading-relaxed text-ink-500">
-            No position came from the transcript — the corridor midpoint is standing in. Correct it
-            before planning.
+            No coordinates came from the transcript — the trailhead is standing in as point last
+            seen. Correct it before planning if you have a better pin.
           </p>
         ) : null}
       </div>

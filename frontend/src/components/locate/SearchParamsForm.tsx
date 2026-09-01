@@ -23,7 +23,10 @@ export function SearchParamsForm({
   onPlan,
 }: SearchParamsFormProps) {
   return (
-    <Panel title="Scan parameters" subtitle="Sent to the search planner as SearchPlanRequest">
+    <Panel
+      title="Scan parameters"
+      subtitle="How the drone flies. Change a field, then plan again."
+    >
       <div className="space-y-3">
         <div className="space-y-1">
           <label
@@ -107,7 +110,11 @@ export function SearchParamsForm({
           {isPlanning ? "Planning…" : "Plan search route"}
         </button>
         <p className="text-[12px] leading-relaxed text-ink-500">
-          Higher overlap means tighter transects and a longer flight.
+          {parameters.patternKind === "corridor_sweep"
+            ? "Corridor to the dashed circle, expanding box inside it, then the rest of the trail. Overlap tightens the box."
+            : parameters.patternKind === "parallel_track"
+              ? "Parallel track is three smoothed passes beside the trail. Higher overlap pulls them closer."
+              : "Expanding box mows a square over the last-known circle. Higher overlap means more legs."}
         </p>
       </div>
     </Panel>

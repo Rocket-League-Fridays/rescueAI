@@ -23,6 +23,11 @@ export interface SearchPlanRequest {
   altitudeAglMeters: number;
   /** Sidelap between adjacent transects, 0..100. */
   overlapPercent: number;
+  /** Committed corridor. When present, corridor/parallel patterns follow this line. */
+  trailLine?: GeoPoint[];
+  corridorBufferMeters?: number;
+  /** Center of the uncertainty circle (likely #1). Box is flown here. */
+  boxCenter?: GeoPoint;
 }
 
 export interface SearchWaypoint {

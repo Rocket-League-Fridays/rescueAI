@@ -20,11 +20,13 @@ from services.ingest.opencv_frame_extractor import OpenCvFrameExtractor
 from services.ingest.pinhole_georeferencer import PinholeGeoreferencer
 from services.ingest.sahi_tiler import SlidingWindowSahiTiler
 from services.intake.incident_service import IncidentService, resolve_demo_dir
+from services.intake.openai_whisper_transcriber import OpenAIWhisperTranscriber
 from services.intake.trail_catalog import TrailCatalog
 from services.intake.transcript_extractor import KeywordTranscriptExtractor
 from services.service_factory import DefaultServiceFactory
 from services.situation.assessor import SituationAssessor
 from services.stubs.cv_pipeline import StubCvPipeline
+from services.stubs.speech_to_text import StubSpeechToText
 from storage.local.local_artifact_store import LocalArtifactStore
 from tasks.async_workers import JobProcessor
 
@@ -91,6 +93,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         catalog=TrailCatalog(demo_dir),
         extractor=KeywordTranscriptExtractor(),
     )
+    if settings.openai_api_key:
+        speech_to_text = OpenAIWhisperTranscriber(
+            api_key=settings.openai_api_key,
+            model=settings.whisper_model,
+        )
+    else:
+        speech_to_text = StubSpeechToText()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -126,6 +135,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.job_processor = job_processor
     app.state.ingest_watcher = ingest_watcher
     app.state.incident_service = incident_service
+    app.state.speech_to_text = speech_to_text
     return app
 
 

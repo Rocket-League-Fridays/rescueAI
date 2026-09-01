@@ -1,6 +1,13 @@
+import path from "path";
+import { fileURLToPath } from "url";
+
+const frontendRoot = path.dirname(fileURLToPath(import.meta.url));
+
 const config = {
   plugins: {
-    tailwindcss: {},
+    tailwindcss: {
+      config: path.join(frontendRoot, "tailwind.config.ts"),
+    },
     autoprefixer: {},
   },
 };

@@ -15,7 +15,7 @@ interface SubjectReviewFormProps {
  * the backend has no incident PATCH yet (see `docs/context/07-frontend-data-map.md`), so every
  * field shows whether it is still the extractor's value or the operator's.
  */
-export function SubjectReviewForm({ incident, overrides, onChange }: SubjectReviewFormProps) {
+export function SubjectReviewFields({ incident, overrides, onChange }: SubjectReviewFormProps) {
   function set<K extends OverridableField>(field: K, value: IncidentOverrides[K]) {
     onChange({ ...overrides, [field]: value });
   }
@@ -27,7 +27,6 @@ export function SubjectReviewForm({ incident, overrides, onChange }: SubjectRevi
   }
 
   return (
-    <Panel title="Subject & corridor" subtitle="Extracted from the transcript — review and correct">
       <div className="space-y-3">
         <FieldRow
           label="Display name"
@@ -91,6 +90,13 @@ export function SubjectReviewForm({ incident, overrides, onChange }: SubjectRevi
           </div>
         </FieldRow>
       </div>
+  );
+}
+
+export function SubjectReviewForm({ incident, overrides, onChange }: SubjectReviewFormProps) {
+  return (
+    <Panel title="Subject & corridor" subtitle="Extracted from the transcript — review and correct">
+      <SubjectReviewFields incident={incident} overrides={overrides} onChange={onChange} />
     </Panel>
   );
 }

@@ -35,6 +35,7 @@ already exists. This doc adds what does not exist yet and maps it to screens.
 | `POST` | `/incidents` | Open incident | `IncidentOut.id`, then re-fetches detail |
 | `POST` | `/incidents/demo` | Demo incident | same |
 | `GET` | `/incidents/fixture` | Load Josh / Y fixture | `transcript` only |
+| `POST` | `/incidents/transcribe` | Upload call / audio | `transcript` only — fills the textarea; does not open an incident |
 | `GET` | `/incidents/{id}` | Every page load and refresh | Full `IncidentDetailOut` |
 | `POST` | `/telemetry` | Attach sortie, no video | `JobOut.id` |
 | `POST` | `/telemetry/upload` | Attach sortie with video | `JobOut.id` |
@@ -77,17 +78,15 @@ Everything an operator can type, drag, or upload, and where it goes.
 | # | UI control | Page | Type | Goes to today | Should go to |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Transcript textarea | `/` | `string` | `POST /incidents {transcript}` | unchanged |
-| 2 | Last-known **pin** (draggable) | Locate | `GeoPoint` | Browser override store | `Incident.lastKnownPoint` |
-| 3 | Last-known **lat/lng** boxes | Locate | `number, number` | same as #2 | same as #2 |
-| 4 | Uncertainty **radius** slider (50–1500 m) | Locate | `number` m | Browser override store | `Incident.lastKnownRadiusMeters` |
+| 1a | **Call / audio** file | `/` | `File` | `POST /incidents/transcribe` multipart `audio` → textarea | unchanged |
+| 2 | Last-known **pin** (draggable) | Locate | `GeoPoint` | Browser override store; coords shown on the incident report | `Incident.lastKnownPoint` |
+| 4 | Uncertainty **radius** | Locate | fixed 100 m default | `lastKnown.radiusMeters` | `Incident.lastKnownRadiusMeters` |
 | 5 | Subject **display name** | Locate | `string` | Browser override store | `Incident.subject.displayName` |
 | 6 | Subject **clothing colors** (comma separated) | Locate | `string[]` lowercased | Browser override store | `Incident.subject.clothingColors` |
 | 7 | Subject **notes** | Locate | `string` | Browser override store | `Incident.subject.notes` |
 | 8 | **Corridor buffer** (m) | Locate | `number` | Browser override store | `Incident.corridorBufferMeters` |
-| 9 | Search **pattern** | Locate | `SearchPatternKind` | `SearchPlanRequest.patternKind` | unchanged |
-| 10 | **Altitude AGL** (30–120 m) | Locate | `number` | `SearchPlanRequest.altitudeAglMeters` | unchanged |
-| 11 | Transect **overlap** (0–90 %) | Locate | `number` | `SearchPlanRequest.overlapPercent` | unchanged |
-| 12 | **Video file** | Locate | `File` | `POST /telemetry/upload` multipart `video` | unchanged |
+| 9 | **Recommended rescue route** | Locate | button | `SearchPlanRequest` with fixed corridor+box defaults | unchanged |
+| 10 | **Video file** | Locate | `File` | `POST /telemetry/upload` multipart `video` | unchanged |
 
 **Rows 2–8 are a review layer, not a replacement.** The backend extracts subject fields from the
 transcript; the operator corrects them. Every one of those fields renders an `AUTO` or `EDITED`
@@ -118,7 +117,10 @@ sidecar on the inbox path; the stub only has to pass `POST /telemetry` validatio
 | Element | Reads | Behavior when absent |
 | --- | --- | --- |
 | Map corridor | `Incident.trailLine`, `Incident.corridorBufferMeters` | No corridor drawn |
-| Map last-known pin + ring | `lastKnownPoint`, `lastKnownRadiusMeters` | Transcript coords first; else corridor midpoint / Y trailhead, chip reads `ASSUMED` |
+| Map last-known pin + ring | `lastKnownPoint`, `lastKnownRadiusMeters` | Pin is PLS (coords / trailhead). On Locate the dashed ring centers on `likelyLocations[0]` when present |
+| Map likely-location markers | `likelyLocations[]` | Locate focus only; omitted when the trail is empty |
+| Map landing zone | Rescue only | Omitted on Locate — no pad until the sortie is analyzed |
+| Incident report time missing | `missingMinutes`, `missingMinutesAssumed` | Defaults to 60 min; map popups read ASSUMED |
 | Map search pattern | `SearchRoute.legs[]` sliced over `waypoints[]` | Layer omitted |
 | Search totals | `distanceMeters`, `estimatedMinutes`, `altitudeAglMeters`, `coverageAreaSqMeters` | Panel shows empty state |
 | Search legs list | `legs[].kind \| label \| distanceMeters \| estimatedMinutes` | — |
@@ -181,6 +183,9 @@ SearchLegKind     = transit | transect | turn
 | `patternKind` | SearchPatternKind | |
 | `altitudeAglMeters` | number | 30–120 from the UI |
 | `overlapPercent` | number | 0–90 sidelap |
+| `trailLine` | GeoPoint[] | optional; fixture corridor sweep follows this |
+| `corridorBufferMeters` | number | optional; how far either side of the trail to fly |
+| `boxCenter` | GeoPoint | optional; uncertainty circle / box center (likely #1) |
 
 **SearchRoute** (response)
 
@@ -188,7 +193,7 @@ SearchLegKind     = transit | transect | turn
 | --- | --- | --- |
 | `id`, `incidentId` | string | |
 | `jobId` | string \| null | Set once a sortie flies this route |
-| `patternKind`, `altitudeAglMeters`, `overlapPercent` | | Echo what was planned — the UI syncs its form to these |
+| `patternKind`, `altitudeAglMeters`, `overlapPercent` | | Echo what was planned |
 | `waypoints[]` | `{lat, lng, altitudeAglMeters}` | **AGL**, not MSL |
 | `legs[]` | `{kind, label, startIndex, endIndex, distanceMeters, estimatedMinutes}` | See invariant below |
 | `distanceMeters` | number | Total track length |
@@ -232,9 +237,9 @@ Called out so their absence reads as a decision, not a gap:
 - **Realtime push.** Polling only, no websockets.
 - **Multi-incident list, history, auth.** One incident at a time.
 - **A real search planner in the frontend.**
-  [`lib/fixture-search-planner.ts`](../../frontend/src/lib/fixture-search-planner.ts) draws a plain
-  lawnmower box so the UI is demoable. It models no terrain, airspace, wind, or battery, is always
-  badged FIXTURE, and should be deleted once the real endpoint answers.
+  [`lib/fixture-search-planner.ts`](../../frontend/src/lib/fixture-search-planner.ts) flies parallel
+  tracks along `trailLine` when present, else a lawnmower box. It models no terrain, airspace, wind,
+  or battery, is always badged FIXTURE, and should be deleted once the real endpoint answers.
 
 ---
 

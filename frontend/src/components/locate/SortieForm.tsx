@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef } from "react";
+import { FormEvent, useRef, useState } from "react";
 
 import { buttonSecondary, Panel } from "@/components/ui";
 
@@ -17,10 +17,15 @@ interface SortieFormProps {
  */
 export function SortieForm({ isLoading, disabled, onAttach, onRefresh }: SortieFormProps) {
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const [hasFootage, setHasFootage] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onAttach(videoInputRef.current?.files?.[0]);
+    const video = videoInputRef.current?.files?.[0];
+    if (!video) {
+      return;
+    }
+    onAttach(video);
   }
 
   return (
@@ -30,11 +35,12 @@ export function SortieForm({ isLoading, disabled, onAttach, onRefresh }: SortieF
           ref={videoInputRef}
           type="file"
           accept="video/*"
+          onChange={() => setHasFootage((videoInputRef.current?.files?.length ?? 0) > 0)}
           className="block w-full text-xs text-ink-200 file:mr-3 file:rounded file:border-0 file:bg-surface-hover file:px-2 file:py-1 file:text-ink-100"
         />
         <button
           type="submit"
-          disabled={isLoading || disabled}
+          disabled={isLoading || disabled || !hasFootage}
           className={`${buttonSecondary} w-full`}
         >
           Run scan on footage

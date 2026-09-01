@@ -3,6 +3,7 @@ from fastapi import Depends, Header, HTTPException, Request, status
 from core.config import Settings
 from services.intake.incident_service import IncidentService
 from services.interface.service_factory import ServiceFactory
+from services.interface.speech_to_text import SpeechToText
 from services.job_service import JobService
 from tasks.async_workers import JobProcessor
 
@@ -27,6 +28,10 @@ def get_job_service(
 
 def get_incident_service(request: Request) -> IncidentService:
     return request.app.state.incident_service
+
+
+def get_speech_to_text(request: Request) -> SpeechToText:
+    return request.app.state.speech_to_text
 
 
 def require_api_key(

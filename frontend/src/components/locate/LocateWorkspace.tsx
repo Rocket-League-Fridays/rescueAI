@@ -6,12 +6,10 @@ import { useRouter } from "next/navigation";
 
 import { DataOriginBanner } from "@/components/DataOriginBanner";
 import { IncidentStageNav } from "@/components/IncidentStageNav";
-import { LastKnownForm } from "@/components/locate/LastKnownForm";
+import { IncidentReport } from "@/components/locate/IncidentReport";
 import { ScanMonitor } from "@/components/locate/ScanMonitor";
-import { SearchParamsForm } from "@/components/locate/SearchParamsForm";
 import { SearchRoutePanel } from "@/components/locate/SearchRoutePanel";
 import { SortieForm } from "@/components/locate/SortieForm";
-import { SubjectReviewForm } from "@/components/locate/SubjectReviewForm";
 import { TranscriptForm } from "@/components/locate/TranscriptForm";
 import { TacticalMap } from "@/components/TacticalMap";
 import { buttonGhost, buttonPrimary, buttonSecondary, EmptyState } from "@/components/ui";
@@ -30,8 +28,8 @@ import type { PresentedIncident } from "@/presenter/IncidentPageView";
 import type { LastKnownPosition } from "@/types/search";
 import type { GeoPoint } from "@/types/telemetry";
 
-const DEFAULT_SEARCH_PARAMETERS: SearchParameters = {
-  patternKind: "parallel_track",
+const RECOMMENDED_SEARCH: SearchParameters = {
+  patternKind: "corridor_sweep",
   altitudeAglMeters: 120,
   overlapPercent: 70,
 };
@@ -54,9 +52,6 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
   const [plannerMessage, setPlannerMessage] = useState<string | null>(null);
   const [staleness, setStaleness] = useState<Staleness | null>(null);
   const [unavailable, setUnavailable] = useState<string | null>(null);
-  const [searchParameters, setSearchParameters] = useState<SearchParameters>(
-    DEFAULT_SEARCH_PARAMETERS,
-  );
   /** Where the landing's Rescue tab points until the store says this tab has a better answer. */
   const [rescueTarget, setRescueTarget] = useState(FIXTURE_INCIDENT_ID);
 
@@ -110,18 +105,6 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
     }
   }, [incidentId, presenter]);
 
-  // Keep the planner form in step with whatever route is actually loaded.
-  useEffect(() => {
-    const route = presented?.searchRoute;
-    if (route) {
-      setSearchParameters({
-        patternKind: route.patternKind,
-        altitudeAglMeters: route.altitudeAglMeters,
-        overlapPercent: route.overlapPercent,
-      });
-    }
-  }, [presented?.searchRoute]);
-
   function handleOverridesChange(next: IncidentOverrides) {
     if (incidentId) {
       presenter.saveOverrides(incidentId, next);
@@ -140,16 +123,6 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
     }
   }
 
-  function handleRevertLastKnown() {
-    if (!incidentId || !presented) {
-      return;
-    }
-    const next = { ...presented.overrides };
-    delete next.lastKnownPoint;
-    delete next.lastKnownRadiusMeters;
-    presenter.saveOverrides(incidentId, next);
-  }
-
   if (incidentId === null) {
     return (
       <IntakeLanding
@@ -160,6 +133,7 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
         onTranscriptChange={setTranscript}
         onOpenIncident={() => void presenter.openIncident(transcript)}
         onSeedData={() => presenter.seedMockIncident()}
+        onTranscribeAudio={(file) => presenter.transcribeAudio(file)}
       />
     );
   }
@@ -197,67 +171,63 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
       <DataOriginBanner origin={origin} staleness={staleness} />
       {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <div className="h-[420px]">
-            <TacticalMap
-              incident={incident}
-              job={job}
-              focus="locate"
-              lastKnown={lastKnown.position}
-              searchRoute={searchRoute}
-              onLastKnownDragged={handleLastKnownDragged}
-              title="Search area"
-              minHeightClass="min-h-[420px]"
-            />
-          </div>
-          <SearchRoutePanel
-            route={searchRoute}
-            incidentLabel={incident.subject.displayName || "incident"}
-            plannerMessage={plannerMessage}
-          />
-          <ScanMonitor
-            job={job}
-            incident={incident}
-            onGoToRescue={() => presenter.goToRescue(incidentId)}
-          />
-        </div>
+      <IncidentReport
+        incident={incident}
+        overrides={overrides}
+        lastKnown={lastKnown.position}
+        onChange={handleOverridesChange}
+      />
 
-        <aside className="space-y-4">
-          <LastKnownForm
-            lastKnown={lastKnown.position}
-            source={lastKnown.source}
-            onChange={handleLastKnownChange}
-            onRevert={handleRevertLastKnown}
-          />
-          <SearchParamsForm
-            parameters={searchParameters}
-            isPlanning={isPlanning}
-            disabled={false}
-            onChange={setSearchParameters}
-            onPlan={() =>
-              void presenter.planSearchRoute(incidentId, lastKnown.position, searchParameters)
-            }
-          />
-          <SubjectReviewForm
-            incident={incident}
-            overrides={overrides}
-            onChange={handleOverridesChange}
-          />
-          <SortieForm
-            isLoading={isLoading}
-            disabled={origin === "fixture"}
-            onAttach={(video) =>
-              void presenter.attachSortie(
-                incidentId,
-                video,
-                lastKnown.position,
-                searchParameters.altitudeAglMeters,
-              )
-            }
-            onRefresh={() => void presenter.refresh(incidentId)}
-          />
-        </aside>
+      <div className="h-[420px]">
+        <TacticalMap
+          incident={incident}
+          job={job}
+          focus="locate"
+          lastKnown={lastKnown.position}
+          searchRoute={searchRoute}
+          onLastKnownDragged={handleLastKnownDragged}
+          title="Search area"
+          minHeightClass="min-h-[420px]"
+          headerAction={
+            <button
+              type="button"
+              disabled={isPlanning}
+              onClick={() =>
+                void presenter.planSearchRoute(incidentId, lastKnown.position, RECOMMENDED_SEARCH)
+              }
+              className={buttonPrimary}
+            >
+              {isPlanning ? "Planning…" : "Recommended rescue route"}
+            </button>
+          }
+        />
+      </div>
+
+      <SearchRoutePanel
+        route={searchRoute}
+        incidentLabel={incident.subject.displayName || "incident"}
+        plannerMessage={plannerMessage}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SortieForm
+          isLoading={isLoading}
+          disabled={origin === "fixture"}
+          onAttach={(video) =>
+            void presenter.attachSortie(
+              incidentId,
+              video,
+              lastKnown.position,
+              RECOMMENDED_SEARCH.altitudeAglMeters,
+            )
+          }
+          onRefresh={() => void presenter.refresh(incidentId)}
+        />
+        <ScanMonitor
+          job={job}
+          incident={incident}
+          onGoToRescue={() => presenter.goToRescue(incidentId)}
+        />
       </div>
     </div>
   );
@@ -271,6 +241,7 @@ function IntakeLanding({
   onTranscriptChange,
   onOpenIncident,
   onSeedData,
+  onTranscribeAudio,
 }: {
   transcript: string;
   isLoading: boolean;
@@ -279,6 +250,7 @@ function IntakeLanding({
   onTranscriptChange(value: string): void;
   onOpenIncident(): void;
   onSeedData(): void;
+  onTranscribeAudio(file: File): Promise<void>;
 }) {
   return (
     <div className="mx-auto max-w-5xl space-y-4 px-4 py-8">
@@ -290,6 +262,7 @@ function IntakeLanding({
           isOpened={false}
           onTranscriptChange={onTranscriptChange}
           onOpenIncident={onOpenIncident}
+          onTranscribeAudio={onTranscribeAudio}
         />
         <FlowExplainer onSeedData={onSeedData} />
       </div>

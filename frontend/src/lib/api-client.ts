@@ -31,6 +31,15 @@ export class ApiClient {
     return this.request<FixtureTranscript>("/incidents/fixture");
   }
 
+  async transcribeAudio(audio: File): Promise<FixtureTranscript> {
+    const formData = new FormData();
+    formData.append("audio", audio);
+    return this.request<FixtureTranscript>("/incidents/transcribe", {
+      method: "POST",
+      body: formData,
+    });
+  }
+
   async getActiveIncident(): Promise<IncidentDetail> {
     return this.request<IncidentDetail>("/incidents/active");
   }

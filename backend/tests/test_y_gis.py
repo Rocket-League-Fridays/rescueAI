@@ -19,7 +19,8 @@ from services.intake.trail_catalog import TrailCatalog
 
 def _scenario() -> tuple[Job, DroneTelemetry, SituationAssessment, list[GeoPoint]]:
     trail = TrailCatalog(resolve_demo_dir("demo")).load_line("Y Mountain Trail")
-    subject = trail[8]
+    anchor = trail[min(len(trail) - 4, max(12, (len(trail) * 2) // 3))]
+    subject = GeoPoint(lat=anchor.lat + 0.0014, lng=anchor.lng + 0.0010)
     now = datetime.now(timezone.utc)
     job = Job(
         id="job-1",

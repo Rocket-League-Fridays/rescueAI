@@ -15,6 +15,7 @@ FastAPI (:8000)
         | BackgroundTasks
         v
 IncidentService (transcript → subject + trail)
+  score_likely_locations (GET detail — trail-biased PLS hypotheses)
 JobProcessor
   FrameExtractor  --> frames (Artifact metadata + bytes)
   CvPipeline      --> Detection rows (+ clothingMatchScore)
@@ -122,6 +123,7 @@ Schema lives in [`backend/dao/sqlite/connection.py`](../../backend/dao/sqlite/co
 | `SAR_DATABASE_PATH` | `data/sar.db` | SQLite file (relative to process cwd; `start_dev.sh` sets an absolute path) |
 | `SAR_ARTIFACTS_DIR` | `data/artifacts` | Binary root |
 | `SAR_API_KEY` | unset | Optional `X-API-Key` |
+| `SAR_OPENAI_API_KEY` | unset | Whisper; `StubSpeechToText` when missing |
 | `SAR_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Frontend API base |
 
@@ -137,4 +139,5 @@ ArtifactStore       -> LocalArtifactStore today
 CvPipeline          -> ClothingScoringCvPipeline today (StubCvPipeline fallback)
 GisRouter           -> YTrailGisRouter today (StubGisRouter is a test double)
 FrameExtractor      -> OpenCvFrameExtractor today
+SpeechToText        -> OpenAIWhisperTranscriber today (StubSpeechToText if no key)
 ```

@@ -6,6 +6,8 @@ import {
   FIXTURE_FRAME_WIDTH,
 } from "@/lib/fixture-frames";
 import { planFixtureSearchRoute } from "@/lib/fixture-search-planner";
+import trailGeojson from "@/data/y_mountain_trail.json";
+import { scoreLikelyLocations } from "@/lib/likely-locations";
 import type { IncidentDetail } from "@/types/incident";
 import type { LastKnownPosition, SearchRoute } from "@/types/search";
 import type {
@@ -41,28 +43,12 @@ const SUBJECT_POINT: GeoPoint = { lat: 40.25215, lng: -111.61845 };
 /** What the caller could actually say — the top of the switchbacks, not the subject's true fix. */
 const LAST_KNOWN: LastKnownPosition = {
   point: { lat: 40.2518, lng: -111.6192 },
-  radiusMeters: 250,
+  radiusMeters: 100,
 };
 
-const trailLine: GeoPoint[] = [
-  { lat: 40.24555, lng: -111.62815 },
-  { lat: 40.2459, lng: -111.6274 },
-  { lat: 40.24625, lng: -111.6268 },
-  { lat: 40.24665, lng: -111.6262 },
-  { lat: 40.24705, lng: -111.62555 },
-  { lat: 40.2474, lng: -111.6249 },
-  { lat: 40.2478, lng: -111.6243 },
-  { lat: 40.24815, lng: -111.6237 },
-  { lat: 40.24855, lng: -111.6231 },
-  { lat: 40.24895, lng: -111.6225 },
-  { lat: 40.24935, lng: -111.6219 },
-  { lat: 40.24975, lng: -111.6214 },
-  { lat: 40.25015, lng: -111.6209 },
-  { lat: 40.25055, lng: -111.6205 },
-  { lat: 40.25095, lng: -111.6201 },
-  { lat: 40.25125, lng: -111.6197 },
-  { lat: 40.25145, lng: -111.61945 },
-];
+const trailLine: GeoPoint[] = trailGeojson.features[0].geometry.coordinates.map(
+  ([lng, lat]) => ({ lat, lng }),
+);
 
 const waypoints: RouteWaypoint[] = [
   { lat: 40.25215, lng: -111.61845, elevationMeters: 2068 },
@@ -263,10 +249,12 @@ export const mockJobDetail: JobDetail = {
   situation,
 };
 
+const FIXTURE_TRANSCRIPT =
+  "Dispatch, this is Provo Canyon SAR intake. Caller reports her hiking partner Josh did not come down from the Y Mountain Trail. They started up from the Y Trailhead around 4 p.m., separated near the top of the switchbacks about an hour later. Josh was wearing a red rain jacket and black hiking pants, carrying a small gray daypack. He has a turned ankle from a fall last month. Last phone contact was a dropped call around 5:50 p.m.; she believes he went uphill past the Y itself and off the main trail. No overnight gear.";
+
 export const mockIncidentDetail: IncidentDetail = {
   id: INCIDENT_ID,
-  transcript:
-    "Dispatch, this is Provo Canyon SAR intake. Caller reports her hiking partner Josh did not come down from the Y Mountain Trail. They started up from the Y Trailhead around 4 p.m., separated near the top of the switchbacks about an hour later. Josh was wearing a red rain jacket and black hiking pants, carrying a small gray daypack. He has a turned ankle from a fall last month. Last phone contact was a dropped call around 5:50 p.m.; she believes he went uphill past the Y itself and off the main trail. No overnight gear.",
+  transcript: FIXTURE_TRANSCRIPT,
   subject: {
     displayName: "Josh",
     clothingColors: ["red", "black"],
@@ -282,6 +270,9 @@ export const mockIncidentDetail: IncidentDetail = {
   corridorBufferMeters: 80,
   lastKnownPoint: LAST_KNOWN.point,
   lastKnownRadiusMeters: LAST_KNOWN.radiusMeters,
+  missingMinutes: 60,
+  missingMinutesAssumed: false,
+  likelyLocations: scoreLikelyLocations(trailLine, LAST_KNOWN.point, 60, FIXTURE_TRANSCRIPT),
   searchRouteId: "fixture-search",
   jobs: [job],
   situation,
@@ -291,9 +282,12 @@ export const mockIncidentDetail: IncidentDetail = {
 export const mockSearchRoute: SearchRoute = planFixtureSearchRoute({
   incidentId: INCIDENT_ID,
   lastKnown: LAST_KNOWN,
-  patternKind: "parallel_track",
+  patternKind: "corridor_sweep",
   altitudeAglMeters: 120,
   overlapPercent: 70,
+  trailLine,
+  corridorBufferMeters: 80,
+  boxCenter: mockIncidentDetail.likelyLocations?.[0]?.point,
 });
 
 export const mockLastKnown: LastKnownPosition = LAST_KNOWN;

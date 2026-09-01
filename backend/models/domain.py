@@ -203,6 +203,16 @@ class SubjectProfile:
     notes: str = ""
 
 
+@dataclass(frozen=True)
+class LikelyLocation:
+    """A trail-biased hypothesis around the point last seen. Not a fix."""
+
+    point: GeoPoint
+    score: float
+    reason: str
+    distance_from_pls_meters: float
+
+
 @dataclass
 class Incident:
     id: str
@@ -216,6 +226,7 @@ class Incident:
     situation_id: str | None = None
     last_known_point: GeoPoint | None = None
     last_known_radius_meters: float | None = None
+    missing_minutes: int | None = None
 
 
 @dataclass

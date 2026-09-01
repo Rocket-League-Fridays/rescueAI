@@ -57,7 +57,8 @@ def test_terrain_has_relief_to_route_around() -> None:
 def test_the_trail_climbs_what_the_real_y_trail_climbs() -> None:
     trail, grid = _grid()
     gain = grid.elevation_at(trail[-1]) - grid.elevation_at(trail[0])
-    assert 400 < gain < 520
+    # Lot to the block Y is ~1,074 ft / 327 m; the old straight-line fixture overstated this.
+    assert 280 < gain < 400
 
 
 def test_elevation_covers_the_bench_to_the_ridge() -> None:

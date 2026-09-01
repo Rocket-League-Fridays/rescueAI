@@ -9,7 +9,7 @@ Implement **your** stub. Do not rewrite another member’s interface or the job 
 **Own**
 
 - `backend/api/routes_telemetry.py`, `routes_jobs.py`, `routes_incidents.py`, `dependencies.py`
-- Intake: `IncidentService`, keyword extractor, `TrailCatalog`, `backend/demo/`
+- Intake: `IncidentService`, keyword extractor, `TrailCatalog`, `SpeechToText` / Whisper, `score_likely_locations`, `backend/demo/`
 - `backend/core/logging.py`, `core/config.py`
 - `OpenCvFrameExtractor` (already wired in `main.py`)
 - `SlidingWindowSahiTiler` — Member 2 **calls this**; do not invent a second windowing scheme

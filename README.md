@@ -52,7 +52,7 @@ Copy a recorded Mini 4K `.mp4` / `.mov` (and the sibling `.SRT` if DJI Fly wrote
 ## Hackathon demo
 
 1. `./start_dev.sh`
-2. **Load Josh / Y fixture** → **Open incident** — trail + ~80 m buffer on the map.
+2. **Load Josh / Y fixture** (or **Upload call / audio** if `SAR_OPENAI_API_KEY` is set) → **Open incident** — trail + ~80 m buffer on the map.
 3. Drop a pre-recorded Mini `DJI_*.MP4` + `.SRT` into `backend/data/inbox/`, or attach the file and coordinates on the dashboard.
 4. The dashboard polls the job through YOLO completion, then shows the winning source frame and a boxed **subject found** evidence image. GIS draws the pin, LZ, and walk-back.
 
@@ -120,6 +120,9 @@ pytest
 | `SAR_DEMO_DIR` | `demo` | Committed transcript + Y GeoJSON |
 | `SAR_YOLO_ENABLED` | `true` | Set `false` in tests |
 | `SAR_YOLO_MODEL` | `yolo11n.pt` | Ultralytics weights |
+| `SAR_OPENAI_API_KEY` | unset | Whisper transcription; stub (503) if missing |
+| `SAR_WHISPER_MODEL` | `whisper-1` | OpenAI audio model |
+| `SAR_MAX_AUDIO_UPLOAD_BYTES` | `26214400` | 25 MB Whisper upload cap |
 | `SAR_API_KEY` | unset (open) | Optional `X-API-Key` gate |
 | `SAR_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated origins |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Frontend API base |

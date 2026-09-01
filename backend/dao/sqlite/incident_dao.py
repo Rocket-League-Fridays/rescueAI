@@ -19,8 +19,8 @@ class SqliteIncidentDao(IncidentDao):
                 INSERT INTO incidents (
                     id, transcript, subject_name, clothing_colors_json, subject_notes,
                     trail_name, trail_line_json, status, created_at, updated_at, situation_id,
-                    last_known_lat, last_known_lng, last_known_radius_meters
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    last_known_lat, last_known_lng, last_known_radius_meters, missing_minutes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 self._to_row(incident),
             )
@@ -66,7 +66,8 @@ class SqliteIncidentDao(IncidentDao):
                     situation_id = ?,
                     last_known_lat = ?,
                     last_known_lng = ?,
-                    last_known_radius_meters = ?
+                    last_known_radius_meters = ?,
+                    missing_minutes = ?
                 WHERE id = ?
                 """,
                 (
@@ -84,6 +85,7 @@ class SqliteIncidentDao(IncidentDao):
                     None if incident.last_known_point is None else incident.last_known_point.lat,
                     None if incident.last_known_point is None else incident.last_known_point.lng,
                     incident.last_known_radius_meters,
+                    incident.missing_minutes,
                     incident.id,
                 ),
             )
@@ -106,6 +108,7 @@ class SqliteIncidentDao(IncidentDao):
             None if incident.last_known_point is None else incident.last_known_point.lat,
             None if incident.last_known_point is None else incident.last_known_point.lng,
             incident.last_known_radius_meters,
+            incident.missing_minutes,
         )
 
     def _to_domain(self, row: object) -> Incident:
@@ -126,6 +129,7 @@ class SqliteIncidentDao(IncidentDao):
             situation_id=row["situation_id"],
             last_known_point=_point_from_row(row),
             last_known_radius_meters=row["last_known_radius_meters"],
+            missing_minutes=row["missing_minutes"] if "missing_minutes" in row.keys() else None,
         )
 
 

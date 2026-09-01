@@ -77,10 +77,22 @@ Member 1 validation surface. Required on `POST /telemetry`.
 | `status` | `open` \| `closed` |
 | `situationId` | set after a sortie produces a `SituationAssessment` |
 | `corridorBufferMeters` | search buffer (default 80) |
-| `lastKnownPoint` | lat/lng pair pulled from the transcript when present |
+| `lastKnownPoint` | lat/lng pair from the transcript, or the trailhead vertex when the call says he started there |
 | `lastKnownRadiusMeters` | optional; operator radius is still client-side until PATCH |
+| `missingMinutes` | parsed from the call when present; null means the scorer assumes 60 |
 
-`GET /incidents/{id}` also nests `jobs[]` and `situation`.
+`GET /incidents/{id}` also nests `jobs[]`, `situation`, `likelyLocations[]`, and `missingMinutesAssumed`.
+
+## LikelyLocation (Locate hypotheses)
+
+Computed on read — not stored. Trail-biased scores around the point last seen.
+
+| JSON | Notes |
+| --- | --- |
+| `point` | On or one step off the committed trail |
+| `score` | 0..1 after min-max across the returned set |
+| `reason` | Why this vertex scored (time, switchback, keyword) |
+| `distanceFromPlsMeters` | Along-trail distance from the snapped PLS |
 
 ## SituationAssessment
 
@@ -182,7 +194,9 @@ SahiTiler.tile(image: ndarray) -> list[SahiTile]   # x, y, 640, 640, image (in-m
 CvPipeline.process(job: Job, frames: list[Artifact]) -> list[Detection]
 DetectionGeoreferencer.apply(detections, telemetry, frames, frame_poses?) -> list[Detection]
 GisRouter.route(job, telemetry, situation=None, trail_line=None) -> tuple[list[LandingZone], Route | None]
-TranscriptExtractor.extract(transcript) -> TranscriptExtract  # subject, trail_name, last_known
+TranscriptExtractor.extract(transcript) -> TranscriptExtract  # subject, trail_name, last_known, missing_minutes, started_from_trailhead
+score_likely_locations(trail, pls, missing_minutes, transcript) -> list[LikelyLocation]
+SpeechToText.transcribe(audio_bytes, mime_type, filename) -> str
 PersonDetector.detect(image) -> list[RawDetection]
 ```
 

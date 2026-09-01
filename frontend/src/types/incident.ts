@@ -25,13 +25,24 @@ export interface Incident {
    */
   lastKnownPoint?: GeoPoint | null;
   lastKnownRadiusMeters?: number | null;
+  /** Parsed from the call when present. */
+  missingMinutes?: number | null;
   /** Set once a search route has been planned for this incident. */
   searchRouteId?: string | null;
+}
+
+export interface LikelyLocation {
+  point: GeoPoint;
+  score: number;
+  reason: string;
+  distanceFromPlsMeters: number;
 }
 
 export interface IncidentDetail extends Incident {
   jobs: Job[];
   situation?: SituationAssessment | null;
+  likelyLocations?: LikelyLocation[];
+  missingMinutesAssumed?: boolean;
 }
 
 export interface CreateIncidentRequest {

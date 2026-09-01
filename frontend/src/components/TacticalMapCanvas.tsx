@@ -22,7 +22,7 @@ import {
   SEARCH_LEG_COLORS,
   SEARCH_LEG_LABELS,
 } from "@/lib/route-colors";
-import type { IncidentDetail } from "@/types/incident";
+import type { IncidentDetail, LikelyLocation } from "@/types/incident";
 import type { LastKnownPosition, SearchLeg, SearchRoute, SearchWaypoint } from "@/types/search";
 import type {
   Detection,
@@ -117,37 +117,57 @@ export default function TacticalMapCanvas({
             />
           ))
         : null}
-      {rankedZones.map((zone, rank) => (
-        <LandingZoneShape key={zone.id} zone={zone} rank={rank} />
-      ))}
+      {!isLocate
+        ? rankedZones.map((zone, rank) => (
+            <LandingZoneShape key={zone.id} zone={zone} rank={rank} />
+          ))
+        : null}
       {lastKnown ? (
         <LastKnownOverlay
           lastKnown={lastKnown}
           subjectName={incident?.subject.displayName ?? "Subject"}
+          hypothesisCenter={
+            isLocate && incident?.likelyLocations?.[0]
+              ? incident.likelyLocations[0].point
+              : null
+          }
           onDragged={onLastKnownDragged}
         />
       ) : null}
-      {legs.length > 0 ? (
-        legs.map((leg, index) => (
-          <RouteLegLine
-            key={`leg-${index}-${leg.startIndex}`}
-            leg={leg}
-            positions={legPositions(waypoints, leg)}
-          />
-        ))
-      ) : (
+      {isLocate
+        ? (incident?.likelyLocations ?? []).map((location, rank) => (
+            <LikelyLocationMarker
+              key={`likely-${rank}-${location.point.lat}-${location.point.lng}`}
+              location={location}
+              rank={rank}
+              assumedTime={incident?.missingMinutesAssumed === true}
+            />
+          ))
+        : null}
+      {!isLocate && legs.length > 0
+        ? legs.map((leg, index) => (
+            <RouteLegLine
+              key={`leg-${index}-${leg.startIndex}`}
+              leg={leg}
+              positions={legPositions(waypoints, leg)}
+            />
+          ))
+        : null}
+      {!isLocate && legs.length === 0 ? (
         <FallbackRouteLine positions={toPositions(waypoints)} />
-      )}
-      {waypoints.map((waypoint, index) => (
-        <RouteWaypointMarker
-          key={`waypoint-${index}`}
-          index={index}
-          waypoint={waypoint}
-          leg={legForWaypointIndex(legs, index)}
-          metersAlongPath={alongPath[index] ?? 0}
-        />
-      ))}
-      {topZone ? (
+      ) : null}
+      {!isLocate
+        ? waypoints.map((waypoint, index) => (
+            <RouteWaypointMarker
+              key={`waypoint-${index}`}
+              index={index}
+              waypoint={waypoint}
+              leg={legForWaypointIndex(legs, index)}
+              metersAlongPath={alongPath[index] ?? 0}
+            />
+          ))
+        : null}
+      {!isLocate && topZone ? (
         <CircleMarker
           center={[topZone.centroid.lat, topZone.centroid.lng]}
           radius={5}
@@ -460,6 +480,43 @@ function SearchLegLine({
   );
 }
 
+function LikelyLocationMarker({
+  location,
+  rank,
+  assumedTime,
+}: {
+  location: LikelyLocation;
+  rank: number;
+  assumedTime: boolean;
+}) {
+  const fill = rank === 0 ? "#FFB020" : "#FFCE73";
+  return (
+    <CircleMarker
+      center={[location.point.lat, location.point.lng]}
+      radius={rank === 0 ? 9 : 7}
+      pathOptions={{
+        color: CASING_COLOR,
+        weight: 2,
+        fillColor: fill,
+        fillOpacity: 0.92,
+      }}
+    >
+      <Popup>
+        <PopupBody
+          title={`Likely ${rank + 1}`}
+          subtitle={assumedTime ? "Time missing assumed 60 min" : "Trail-biased hypothesis"}
+          rows={[
+            ["Score", `${Math.round(location.score * 100)}%`],
+            ["From PLS", formatMeters(location.distanceFromPlsMeters)],
+            ["Why", location.reason],
+            ["Position", formatLatLng(location.point.lat, location.point.lng)],
+          ]}
+        />
+      </Popup>
+    </CircleMarker>
+  );
+}
+
 /**
  * The operator's approximate last-known position. Drag handling uses a `divIcon` because
  * Leaflet's default marker icon resolves a bundled image path that breaks under Next, and
@@ -468,12 +525,16 @@ function SearchLegLine({
 function LastKnownOverlay({
   lastKnown,
   subjectName,
+  hypothesisCenter,
   onDragged,
 }: {
   lastKnown: LastKnownPosition;
   subjectName: string;
+  /** When set, the uncertainty ring is the current-position guess, not the PLS pin. */
+  hypothesisCenter: GeoPoint | null;
   onDragged?: (point: GeoPoint) => void;
 }) {
+  const ring = hypothesisCenter ?? lastKnown.point;
   const draggable = typeof onDragged === "function";
   const icon = useMemo(
     () =>
@@ -492,7 +553,7 @@ function LastKnownOverlay({
   return (
     <>
       <Circle
-        center={[lastKnown.point.lat, lastKnown.point.lng]}
+        center={[ring.lat, ring.lng]}
         radius={lastKnown.radiusMeters}
         pathOptions={{
           color: "#f0c14b",
@@ -523,7 +584,12 @@ function LastKnownOverlay({
             subtitle={draggable ? "Drag to correct" : "Approximate"}
             rows={[
               ["Position", formatLatLng(lastKnown.point.lat, lastKnown.point.lng)],
-              ["Uncertainty", formatMeters(lastKnown.radiusMeters)],
+              [
+                "Uncertainty",
+                hypothesisCenter
+                  ? `${formatMeters(lastKnown.radiusMeters)} around likely 1`
+                  : formatMeters(lastKnown.radiusMeters),
+              ],
             ]}
           />
         </Popup>

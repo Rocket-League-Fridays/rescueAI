@@ -4,6 +4,7 @@ from services.interface.georeferencer import DetectionGeoreferencer
 from services.interface.gis_router import GisRouter
 from services.interface.sahi_tiler import SahiTile, SahiTiler
 from services.interface.service_factory import ServiceFactory
+from services.interface.speech_to_text import SpeechToText
 
 __all__ = [
     "CvPipeline",
@@ -13,4 +14,5 @@ __all__ = [
     "SahiTile",
     "SahiTiler",
     "ServiceFactory",
+    "SpeechToText",
 ]

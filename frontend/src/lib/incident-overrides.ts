@@ -27,10 +27,10 @@ export type OverridableField =
   | "notes"
   | "corridorBufferMeters";
 
-/** `assumed` means nobody supplied one and the corridor midpoint is standing in. */
+/** `assumed` means nobody supplied one and the trailhead is standing in. */
 export type LastKnownSource = "extracted" | "edited" | "assumed";
 
-export const DEFAULT_LAST_KNOWN_RADIUS_M = 250;
+export const DEFAULT_LAST_KNOWN_RADIUS_M = 100;
 
 export interface OverrideStore {
   read(incidentId: string): IncidentOverrides;
@@ -98,8 +98,8 @@ export interface ResolvedLastKnown {
 }
 
 /**
- * The pin the operator drags. Falls back to the middle of the trail corridor so there is always
- * something to grab — reported as `assumed` so the UI never implies the caller gave a position.
+ * The pin the operator drags. Falls back to the trailhead so a "started from the lot" call has a
+ * real PLS — reported as `assumed` when the caller did not give coordinates.
  */
 export function resolveLastKnown(
   incident: IncidentDetail,
@@ -124,7 +124,7 @@ export function resolveLastKnown(
     return { position: { point: fromTranscript, radiusMeters: radius }, source: "extracted" };
   }
   return {
-    position: { point: corridorMidpoint(incident.trailLine), radiusMeters: radius },
+    position: { point: trailheadPoint(incident.trailLine), radiusMeters: radius },
     source: "assumed",
   };
 }
@@ -148,9 +148,9 @@ export function extractLastKnownFromTranscript(transcript: string): GeoPoint | n
   return { lat, lng };
 }
 
-function corridorMidpoint(trailLine: GeoPoint[]): GeoPoint {
+function trailheadPoint(trailLine: GeoPoint[]): GeoPoint {
   if (trailLine.length === 0) {
     return { lat: 40.24555, lng: -111.62815 };
   }
-  return trailLine[Math.floor(trailLine.length / 2)];
+  return trailLine[0];
 }

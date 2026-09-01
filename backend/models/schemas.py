@@ -18,6 +18,7 @@ from models.domain import (
     GimbalOrientation,
     Incident,
     IncidentStatus,
+    LikelyLocation,
     Job,
     JobStatus,
     LandingZone,
@@ -403,6 +404,22 @@ class CreateIncidentRequest(CamelModel):
     transcript: str = Field(min_length=1)
 
 
+class LikelyLocationOut(CamelModel):
+    point: GeoPointSchema
+    score: float = Field(ge=0, le=1)
+    reason: str
+    distance_from_pls_meters: float = Field(ge=0)
+
+    @classmethod
+    def from_domain(cls, location: LikelyLocation) -> Self:
+        return cls(
+            point=GeoPointSchema.from_domain(location.point),
+            score=location.score,
+            reason=location.reason,
+            distance_from_pls_meters=location.distance_from_pls_meters,
+        )
+
+
 class IncidentOut(CamelModel):
     id: str
     transcript: str
@@ -416,6 +433,7 @@ class IncidentOut(CamelModel):
     corridor_buffer_meters: float = 80
     last_known_point: GeoPointSchema | None = None
     last_known_radius_meters: float | None = None
+    missing_minutes: int | None = None
 
     @classmethod
     def from_domain(cls, incident: Incident, corridor_buffer_meters: float = 80) -> Self:
@@ -436,12 +454,15 @@ class IncidentOut(CamelModel):
                 else GeoPointSchema.from_domain(incident.last_known_point)
             ),
             last_known_radius_meters=incident.last_known_radius_meters,
+            missing_minutes=incident.missing_minutes,
         )
 
 
 class IncidentDetailOut(IncidentOut):
     jobs: list[JobOut] = Field(default_factory=list)
     situation: SituationAssessmentOut | None = None
+    likely_locations: list[LikelyLocationOut] = Field(default_factory=list)
+    missing_minutes_assumed: bool = False
 
 
 class FixtureTranscriptOut(CamelModel):

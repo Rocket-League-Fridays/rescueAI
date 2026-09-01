@@ -22,7 +22,8 @@ from services.intake.trail_catalog import TrailCatalog
 
 def _scenario():
     trail = TrailCatalog(resolve_demo_dir("demo")).load_line("Y Mountain Trail")
-    subject = trail[8]
+    anchor = trail[min(len(trail) - 4, max(12, (len(trail) * 2) // 3))]
+    subject = GeoPoint(lat=anchor.lat + 0.0014, lng=anchor.lng + 0.0010)
     now = datetime.now(timezone.utc)
     job = Job(
         id="job-1",
@@ -111,7 +112,10 @@ def test_the_route_is_not_the_straight_line_and_the_straight_line_is_illegal() -
 
     subject_leg = route.legs[0]
     routed = route.waypoints[subject_leg.start_index : subject_leg.end_index + 1]
-    assert len(routed) > len(straight)
+    routed_cells = [
+        grid.index_of(GeoPoint(lat=waypoint.lat, lng=waypoint.lng)) for waypoint in routed
+    ]
+    assert routed_cells != straight
 
 
 def test_the_landing_zone_is_reachable_under_load() -> None:

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { ExportMenu } from "@/components/ExportMenu";
 import { EmptyState, SectionLabel, Stat } from "@/components/ui";
 import { SEARCH_LEG_COLORS, SEARCH_LEG_LABELS } from "@/lib/route-colors";
@@ -13,24 +15,46 @@ interface SearchRoutePanelProps {
 }
 
 export function SearchRoutePanel({ route, incidentLabel, plannerMessage }: SearchRoutePanelProps) {
+  const [open, setOpen] = useState(route !== null);
+
+  useEffect(() => {
+    if (route) {
+      setOpen(true);
+    }
+  }, [route?.id]);
+
+  if (route === null && !plannerMessage) {
+    return null;
+  }
+
   return (
     <section className="overflow-hidden rounded-lg border border-line bg-surface-raised shadow-panel">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
-        <div>
-          <h3 className="text-[15px] font-semibold tracking-tight text-ink-100">
-            Drone search route
-          </h3>
-          <p className="mt-0.5 font-mono text-[11px] text-ink-500">
-            {route ? SEARCH_PATTERN_LABELS[route.patternKind] : "NOT PLANNED"}
-          </p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          aria-expanded={open}
+        >
+          <span className="font-mono text-[11px] text-ink-500" aria-hidden>
+            {open ? "▾" : "▸"}
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-semibold tracking-tight text-ink-100">
+              Drone search route
+            </h3>
+            <p className="mt-0.5 font-mono text-[11px] text-ink-500">
+              {route ? SEARCH_PATTERN_LABELS[route.patternKind] : "NOT PLANNED"}
+            </p>
+          </div>
+        </button>
         <ExportMenu
           route={route ? searchRouteToExportable(route, incidentLabel) : null}
           label="Export for operator"
         />
       </header>
 
-      {route === null ? (
+      {!open ? null : route === null ? (
         <div className="p-4">
           <EmptyState>
             {plannerMessage ?? "No search route yet — set the pin and plan a scan"}
