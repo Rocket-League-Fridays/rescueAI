@@ -35,7 +35,7 @@ Implement **your** stub. Do not rewrite another member’s interface or the job 
 
 ## Member 3 — GIS & A*
 
-**Goal:** Cached 3DEP terrain, carry-cost A*, reachability- and footprint-filtered LZ, walk-back onto the trail.
+**Goal:** Cached 3DEP terrain, carry-cost A*, reachability- and footprint-filtered LZ, carry route from the subject to that LZ.
 
 **Own**
 

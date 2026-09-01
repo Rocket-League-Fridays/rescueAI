@@ -164,7 +164,7 @@ NMS + restitch happen **inside** `CvPipeline` before you return this list. The w
 | `inboundMinutes` | The same path walked **unloaded** on the way in |
 | `notes` | Which pace profile and cost rules produced the numbers |
 
-`legs[]` partitions `waypoints` — legs are contiguous and share endpoints (`leg[n].endIndex == leg[n+1].startIndex`), the first starts at `0`, the last ends at `waypoints.length - 1`, and the leg totals sum to the route totals. Slice `waypoints[startIndex..endIndex]` to draw or highlight one leg; do not duplicate point data into the leg.
+`legs[]` partitions `waypoints` — legs are contiguous and share endpoints (`leg[n].endIndex == leg[n+1].startIndex`), the first starts at `0`, the last ends at `waypoints.length - 1`, and the leg totals sum to the route totals. `YTrailGisRouter` currently emits a **single `subject_link` leg**: the route ends at the landing zone, because that is where the helicopter extracts ([D20](01-decisions.md)). The structure and the other leg kinds remain for routers that add an approach leg. Slice `waypoints[startIndex..endIndex]` to draw or highlight one leg; do not duplicate point data into the leg.
 
 Measurement helpers live in [`backend/services/gis/route_metrics.py`](../../backend/services/gis/route_metrics.py) (`build_leg`, `summarize`, `haversine_m`). A new `GisRouter` implementation should reuse them so the readouts stay consistent across routers.
 

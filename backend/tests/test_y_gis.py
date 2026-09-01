@@ -51,7 +51,7 @@ def _scenario() -> tuple[Job, DroneTelemetry, SituationAssessment, list[GeoPoint
     return job, telemetry, situation, trail
 
 
-def test_y_router_returns_lz_and_walk_back() -> None:
+def test_y_router_returns_an_lz_and_a_carry_route() -> None:
     job, telemetry, situation, trail = _scenario()
     zones, route = YTrailGisRouter().route(job, telemetry, situation, trail)
     assert len(zones) == 1
@@ -73,11 +73,9 @@ def test_y_router_legs_tile_the_waypoints_and_sum_to_the_totals() -> None:
     job, telemetry, situation, trail = _scenario()
     _, route = YTrailGisRouter().route(job, telemetry, situation, trail)
     assert route is not None
-    assert [leg.kind for leg in route.legs] == [
-        RouteLegKind.SUBJECT_LINK,
-        RouteLegKind.OFF_TRAIL,
-        RouteLegKind.ON_TRAIL,
-    ]
+    assert [leg.kind for leg in route.legs] == [RouteLegKind.SUBJECT_LINK], (
+        "the route ends at the LZ; a helicopter extracts from there"
+    )
 
     assert route.legs[0].start_index == 0
     assert route.legs[-1].end_index == len(route.waypoints) - 1
