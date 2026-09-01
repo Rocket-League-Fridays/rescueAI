@@ -18,6 +18,7 @@ IncidentService (transcript → subject + trail)
 JobProcessor
   FrameExtractor  --> frames (Artifact metadata + bytes)
   CvPipeline      --> Detection rows (+ clothingMatchScore)
+  EvidenceRenderer --> annotated_frame (box + subject zoom)
   SituationAssessor --> SituationAssessment
   GisRouter       --> LandingZone rows + Route (situation + trail)
 ```
@@ -96,11 +97,13 @@ page.tsx (View implementation)
     --> DashboardPresenter (no React)
           --> ApiClient
                 --> POST /incidents, POST /telemetry, GET /jobs/{id}
-    --> StreamViewer (placeholder panes)
+                --> GET /artifacts/{id}/content
+    --> StreamViewer (source frame + boxed evidence)
     --> TacticalMap --> dynamic TacticalMapCanvas (Leaflet)
 ```
 
-Clothing-match alerts render when a person detection has a high `clothingMatchScore`.
+The presenter polls active jobs through completion. Person detections render as a source frame,
+boxed evidence frame, subject alert, and map pin even when the clothing score is weak.
 
 ## Persistence schema (SQLite)
 

@@ -1,4 +1,4 @@
-import type { ApiClient } from "@/lib/api-client";
+import { ApiClientError, type ApiClient } from "@/lib/api-client";
 import type { CreateJobRequest } from "@/types/telemetry";
 import type { DashboardView } from "@/presenter/DashboardView";
 
@@ -7,6 +7,24 @@ export class DashboardPresenter {
     private readonly view: DashboardView,
     private readonly apiClient: ApiClient,
   ) {}
+
+  async resumeActiveIncident(): Promise<void> {
+    try {
+      const detail = await this.apiClient.getActiveIncident();
+      this.view.displayIncident(detail);
+      const latestJob = detail.jobs[detail.jobs.length - 1];
+      if (latestJob) {
+        await this.waitForJob(latestJob.id);
+      }
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 404) {
+        return;
+      }
+      this.view.displayErrorMessage(
+        toErrorMessage(error, "Failed to resume active incident"),
+      );
+    }
+  }
 
   async loadFixtureTranscript(): Promise<void> {
     this.view.setIsLoading(true);
@@ -57,8 +75,7 @@ export class DashboardPresenter {
       this.view.displayIncident(detail);
       const latestJob = detail.jobs[detail.jobs.length - 1];
       if (latestJob) {
-        const job = await this.apiClient.getJob(latestJob.id);
-        this.view.displayJob(job);
+        await this.waitForJob(latestJob.id);
       }
     } catch (error) {
       this.view.displayErrorMessage(toErrorMessage(error, "Failed to refresh incident"));
@@ -75,13 +92,28 @@ export class DashboardPresenter {
         video === undefined
           ? await this.apiClient.createJob(request)
           : await this.apiClient.createJobWithVideo(request, video);
-      const detail = await this.apiClient.getJob(created.id);
-      this.view.displayJob(detail);
+      await this.waitForJob(created.id);
     } catch (error) {
       this.view.displayErrorMessage(toErrorMessage(error, "Failed to submit sortie"));
     } finally {
       this.view.setIsLoading(false);
     }
+  }
+
+  private async waitForJob(jobId: string): Promise<void> {
+    const maxPolls = 80;
+    for (let poll = 0; poll < maxPolls; poll += 1) {
+      const detail = await this.apiClient.getJob(jobId);
+      this.view.displayJob(detail);
+      if (detail.status === "completed") {
+        return;
+      }
+      if (detail.status === "failed") {
+        throw new Error(detail.failureReason ?? `Job ${jobId} failed`);
+      }
+      await delay(1500);
+    }
+    throw new Error(`Job ${jobId} did not finish within two minutes`);
   }
 
   async loadJob(jobId: string): Promise<void> {
@@ -103,4 +135,8 @@ function toErrorMessage(error: unknown, prefix: string): string {
     return `${prefix}: ${error.message}`;
   }
   return `${prefix}: unknown error`;
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

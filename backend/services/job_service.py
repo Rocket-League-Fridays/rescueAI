@@ -7,6 +7,7 @@ from dao.interface.dao_factory import DaoFactory
 from models.domain import Artifact, ArtifactKind, Job, JobStatus
 from models.schemas import (
     CreateJobRequest,
+    ArtifactOut,
     DetectionOut,
     DroneTelemetryOut,
     JobDetailOut,
@@ -79,6 +80,7 @@ class JobService:
             return None
 
         telemetry = self._dao_factory.create_telemetry_dao().get_by_id(job.telemetry_id)
+        artifacts = self._dao_factory.create_artifact_dao().list_by_job_id(job_id)
         detections = self._dao_factory.create_detection_dao().list_by_job_id(job_id)
         landing_zones = self._dao_factory.create_landing_zone_dao().list_by_job_id(job_id)
         route = self._dao_factory.create_route_dao().get_by_job_id(job_id)
@@ -88,6 +90,7 @@ class JobService:
         return JobDetailOut(
             **detail.model_dump(),
             telemetry=None if telemetry is None else DroneTelemetryOut.from_domain(telemetry),
+            artifacts=[ArtifactOut.from_domain(artifact) for artifact in artifacts],
             detections=[DetectionOut.from_domain(detection) for detection in detections],
             landing_zones=[
                 LandingZoneOut.from_domain(landing_zone) for landing_zone in landing_zones
@@ -95,6 +98,12 @@ class JobService:
             route=None if route is None else RouteOut.from_domain(route),
             situation=None if situation is None else SituationAssessmentOut.from_domain(situation),
         )
+
+    def get_artifact_content(self, artifact_id: str) -> tuple[bytes, str] | None:
+        artifact = self._dao_factory.create_artifact_dao().get_by_id(artifact_id)
+        if artifact is None:
+            return None
+        return self._artifact_store.get(artifact.storage_key), artifact.mime_type
 
     def _store_video(
         self,

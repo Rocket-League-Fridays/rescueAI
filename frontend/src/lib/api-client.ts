@@ -63,6 +63,10 @@ export class ApiClient {
     return this.request<JobDetail>(`/jobs/${jobId}`);
   }
 
+  artifactContentUrl(artifactId: string): string {
+    return `${this.baseUrl}/artifacts/${encodeURIComponent(artifactId)}/content`;
+  }
+
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, init);
     if (!response.ok) {

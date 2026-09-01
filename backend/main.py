@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.routes_artifacts import router as artifacts_router
 from api.routes_incidents import router as incidents_router
 from api.routes_jobs import router as jobs_router
 from api.routes_telemetry import router as telemetry_router
@@ -11,6 +12,7 @@ from core.config import Settings
 from core.logging import configure_logging
 from dao.sqlite.sqlite_dao_factory import SqliteDaoFactory
 from services.cv.clothing_cv_pipeline import ClothingScoringCvPipeline
+from services.cv.evidence_renderer import OpenCvDetectionEvidenceRenderer
 from services.cv.ultralytics_detector import try_create_ultralytics_detector
 from services.gis.y_trail_router import YTrailGisRouter
 from services.ingest.folder_watcher import IngestWatcher
@@ -55,6 +57,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     gis_router = YTrailGisRouter()
     georeferencer = PinholeGeoreferencer(settings.camera_hfov_degrees)
     situation_assessor = SituationAssessor(artifact_store)
+    evidence_renderer = OpenCvDetectionEvidenceRenderer(
+        artifact_store=artifact_store,
+        artifact_dao=dao_factory.create_artifact_dao(),
+        jpeg_quality=settings.jpeg_quality,
+    )
     service_factory = DefaultServiceFactory(
         dao_factory=dao_factory,
         artifact_store=artifact_store,
@@ -69,6 +76,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         gis_router=gis_router,
         georeferencer=georeferencer,
         situation_assessor=situation_assessor,
+        evidence_renderer=evidence_renderer,
     )
     ingest_watcher = IngestWatcher(
         settings=settings,
@@ -107,6 +115,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(incidents_router)
     app.include_router(telemetry_router)
     app.include_router(jobs_router)
+    app.include_router(artifacts_router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

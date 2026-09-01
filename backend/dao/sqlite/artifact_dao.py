@@ -42,7 +42,7 @@ class SqliteArtifactDao(ArtifactDao):
     def list_by_job_id(self, job_id: str) -> list[Artifact]:
         with self._connections.connect() as connection:
             rows = connection.execute(
-                "SELECT * FROM artifacts WHERE job_id = ?",
+                "SELECT * FROM artifacts WHERE job_id = ? ORDER BY rowid ASC",
                 (job_id,),
             ).fetchall()
         return [self._to_domain(row) for row in rows]

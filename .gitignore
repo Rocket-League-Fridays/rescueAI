@@ -14,3 +14,4 @@ frontend/tsconfig.tsbuildinfo
 *.db
 *.db-wal
 *.db-shm
+*.pt

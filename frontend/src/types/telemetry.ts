@@ -146,6 +146,7 @@ export interface SituationAssessment {
 
 export interface JobDetail extends Job {
   telemetry?: DroneTelemetry | null;
+  artifacts: Artifact[];
   detections: Detection[];
   landingZones: LandingZone[];
   route?: Route | null;

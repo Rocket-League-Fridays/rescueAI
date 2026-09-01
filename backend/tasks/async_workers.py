@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from dao.interface.dao_factory import DaoFactory
 from models.domain import Artifact, JobStatus
 from services.interface.cv_pipeline import CvPipeline
+from services.interface.detection_evidence_renderer import DetectionEvidenceRenderer
 from services.interface.frame_extractor import FrameExtractor
 from services.interface.georeferencer import DetectionGeoreferencer
 from services.interface.gis_router import GisRouter
@@ -24,6 +25,7 @@ class JobProcessor:
         gis_router: GisRouter,
         georeferencer: DetectionGeoreferencer,
         situation_assessor: SituationAssessor | None = None,
+        evidence_renderer: DetectionEvidenceRenderer | None = None,
     ) -> None:
         self._dao_factory = dao_factory
         self._frame_extractor = frame_extractor
@@ -31,6 +33,7 @@ class JobProcessor:
         self._gis_router = gis_router
         self._georeferencer = georeferencer
         self._situation_assessor = situation_assessor
+        self._evidence_renderer = evidence_renderer
 
     def process_job(self, job_id: str) -> None:
         started = time.perf_counter()
@@ -69,6 +72,14 @@ class JobProcessor:
                 incident = self._dao_factory.create_incident_dao().get_by_id(job.incident_id)
                 if incident is not None:
                     trail_line = incident.trail_line
+            evidence = None
+            if self._evidence_renderer is not None:
+                evidence = self._evidence_renderer.render(
+                    job,
+                    incident.subject.display_name if incident is not None else "Person",
+                    detections,
+                    frames,
+                )
             if self._situation_assessor is not None:
                 situation = self._situation_assessor.assess(
                     job.id, job.incident_id, detections, frames
@@ -102,6 +113,7 @@ class JobProcessor:
                     "duration_ms": int((time.perf_counter() - started) * 1000),
                     "detection_count": len(job.detection_ids),
                     "landing_zone_count": len(job.landing_zone_ids),
+                    "evidence_artifact_id": None if evidence is None else evidence.id,
                 },
             )
         except Exception as exc:

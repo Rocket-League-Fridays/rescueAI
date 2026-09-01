@@ -56,7 +56,9 @@ Member 1 validation surface. Required on `POST /telemetry`.
 | `routeId` | null until GIS writes a route |
 | `incidentId` | optional; search sortie linked to an Incident |
 
-`GET /jobs/{id}` also nests `telemetry`, `detections`, `landingZones`, `route`, `situation` (`JobDetail`).
+`GET /jobs/{id}` also nests `telemetry`, `artifacts`, `detections`, `landingZones`,
+`route`, and `situation` (`JobDetail`). The frontend reads frame bytes from
+`GET /artifacts/{artifactId}/content`; storage keys are never constructed in the browser.
 
 ## Incident / subject
 
@@ -94,6 +96,9 @@ Member 1 validation surface. Required on `POST /telemetry`.
 | `mimeType` | |
 | `width`, `height` | optional |
 | `frameIndex` | optional, for extracted frames |
+
+`annotated_frame` evidence uses the same `frameIndex` as its source `frame`, allowing the
+dashboard to show the before/after pair.
 
 Bytes: `ArtifactStore.put/get/delete(storage_key)`. Keys must not start with `/` or contain `..`.
 
