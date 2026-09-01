@@ -32,15 +32,15 @@ interface ElevationTooltipProps {
 }
 
 const MONO_FONT = "var(--font-mono), ui-monospace, monospace";
-const AXIS_TICK = { fill: "#6e7c48", fontSize: 10, fontFamily: MONO_FONT };
-const AXIS_LINE = { stroke: "#3d4a2c" };
+const AXIS_TICK = { fill: "#5C6E80", fontSize: 10, fontFamily: MONO_FONT };
+const AXIS_LINE = { stroke: "rgba(148,163,184,0.14)" };
 
 export function ElevationProfile({ route }: ElevationProfileProps) {
   const waypoints = route.waypoints;
 
   if (waypoints.length < 2) {
     return (
-      <div className="flex h-[180px] items-center justify-center rounded border border-line-soft bg-surface-sunken">
+      <div className="flex h-[180px] items-center justify-center rounded-sm border border-line-soft bg-inset">
         <p className="font-mono text-[11px] uppercase tracking-label text-ink-500">
           Not enough waypoints for a profile
         </p>
@@ -55,7 +55,7 @@ export function ElevationProfile({ route }: ElevationProfileProps) {
       distanceMeters: distances[index],
       elevationMeters: waypoint.elevationMeters,
       legLabel: leg ? leg.label || ROUTE_LEG_LABELS[leg.kind] : "—",
-      legColor: leg ? ROUTE_LEG_COLORS[leg.kind] : "#6e7c48",
+      legColor: leg ? ROUTE_LEG_COLORS[leg.kind] : "#5C6E80",
     };
   });
 
@@ -76,16 +76,16 @@ export function ElevationProfile({ route }: ElevationProfileProps) {
   }
 
   return (
-    <div className="rounded border border-line-soft bg-surface-sunken py-2 pr-3">
+    <div className="rounded-sm border border-line-soft bg-inset py-2 pr-3">
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 4, left: 0 }}>
           <defs>
             <linearGradient id="elevation-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#c4d67c" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="#c4d67c" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="#3DD6F5" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="#3DD6F5" stopOpacity={0.02} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke="#2a3320" strokeDasharray="2 4" vertical={false} />
+          <CartesianGrid stroke="rgba(148,163,184,0.08)" strokeDasharray="2 4" vertical={false} />
           {route.legs.map((leg, index) => (
             <ReferenceArea
               key={`${leg.kind}-${leg.startIndex}-${index}`}
@@ -94,7 +94,7 @@ export function ElevationProfile({ route }: ElevationProfileProps) {
               y1={yDomain[0]}
               y2={yDomain[1]}
               fill={ROUTE_LEG_COLORS[leg.kind]}
-              fillOpacity={0.1}
+              fillOpacity={0.12}
               strokeOpacity={0}
               ifOverflow="extendDomain"
             />
@@ -120,16 +120,16 @@ export function ElevationProfile({ route }: ElevationProfileProps) {
           />
           <Tooltip
             content={<ElevationTooltip />}
-            cursor={{ stroke: "#a8b86a", strokeWidth: 1, strokeDasharray: "3 3" }}
+            cursor={{ stroke: "#3DD6F5", strokeWidth: 1, strokeDasharray: "3 3" }}
           />
           <Area
             type="monotone"
             dataKey="elevationMeters"
-            stroke="#f0c14b"
+            stroke="#3DD6F5"
             strokeWidth={1.5}
             fill="url(#elevation-fill)"
             dot={false}
-            activeDot={{ r: 3, fill: "#f0c14b", stroke: "#0d1310" }}
+            activeDot={{ r: 3, fill: "#3DD6F5", stroke: "#030608" }}
             isAnimationActive={false}
           />
         </AreaChart>
@@ -144,7 +144,7 @@ function ElevationTooltip({ active, payload }: ElevationTooltipProps) {
     return null;
   }
   return (
-    <div className="rounded border border-line bg-surface-sunken/95 px-2 py-1.5 font-mono text-[11px] text-ink-100 shadow-lg">
+    <div className="rounded-sm border border-line hud-glass px-2 py-1.5 font-mono text-[11px] text-ink-100 shadow-panel">
       <p className="flex items-center gap-1.5 uppercase tracking-label text-ink-300">
         <span
           className="inline-block h-2 w-2 rounded-sm"

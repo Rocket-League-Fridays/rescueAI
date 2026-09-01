@@ -178,27 +178,25 @@ def _draw_zoom_inset(
 ) -> None:
     height, width = source_image.shape[:2]
     box = winner.bbox
-    pad_x = max(40.0, box.width * 4.0)
-    pad_y = max(40.0, box.height * 2.0)
-    crop_x1 = max(0, round(box.x - pad_x))
-    crop_y1 = max(0, round(box.y - pad_y))
-    crop_x2 = min(width, round(box.x + box.width + pad_x))
-    crop_y2 = min(height, round(box.y + box.height + pad_y))
+    pad = max(24.0, max(box.width, box.height) * 0.55)
+    crop_x1 = max(0, round(box.x - pad))
+    crop_y1 = max(0, round(box.y - pad))
+    crop_x2 = min(width, round(box.x + box.width + pad))
+    crop_y2 = min(height, round(box.y + box.height + pad))
     crop = source_image[crop_y1:crop_y2, crop_x1:crop_x2]
     if crop.size == 0:
         return
 
-    inset_width = min(width - 32, max(180, round(width * 0.32)))
-    inset_height = min(height - 70, min(220, max(100, round(inset_width * 0.58))))
+    crop_h, crop_w = crop.shape[:2]
+    inset_width = min(width - 32, max(180, round(width * 0.28)))
+    inset_height = min(height - 70, max(160, round(inset_width * crop_h / max(1, crop_w))))
     if inset_width < 80 or inset_height < 60:
         return
-    inset = cv2.resize(crop, (inset_width, inset_height), interpolation=cv2.INTER_CUBIC)
-    scale_x = inset_width / max(1, crop_x2 - crop_x1)
-    scale_y = inset_height / max(1, crop_y2 - crop_y1)
-    subject_x1 = round((box.x - crop_x1) * scale_x)
-    subject_y1 = round((box.y - crop_y1) * scale_y)
-    subject_x2 = round((box.x + box.width - crop_x1) * scale_x)
-    subject_y2 = round((box.y + box.height - crop_y1) * scale_y)
+    inset, scale, offset_x, offset_y = _letterbox(crop, inset_width, inset_height)
+    subject_x1 = offset_x + round((box.x - crop_x1) * scale)
+    subject_y1 = offset_y + round((box.y - crop_y1) * scale)
+    subject_x2 = offset_x + round((box.x + box.width - crop_x1) * scale)
+    subject_y2 = offset_y + round((box.y + box.height - crop_y1) * scale)
     cv2.rectangle(
         inset,
         (subject_x1, subject_y1),
@@ -230,3 +228,19 @@ def _draw_zoom_inset(
         (45, 196, 255),
         max(3, inset_width // 300),
     )
+
+
+def _letterbox(
+    crop: np.ndarray, dest_width: int, dest_height: int
+) -> tuple[np.ndarray, float, int, int]:
+    """Scale a crop to fit dest without stretching; unused edges stay dark."""
+    crop_h, crop_w = crop.shape[:2]
+    scale = min(dest_width / max(1, crop_w), dest_height / max(1, crop_h))
+    new_w = max(1, round(crop_w * scale))
+    new_h = max(1, round(crop_h * scale))
+    resized = cv2.resize(crop, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+    canvas = np.full((dest_height, dest_width, 3), (7, 15, 10), dtype=crop.dtype)
+    offset_x = (dest_width - new_w) // 2
+    offset_y = (dest_height - new_h) // 2
+    canvas[offset_y : offset_y + new_h, offset_x : offset_x + new_w] = resized
+    return canvas, scale, offset_x, offset_y

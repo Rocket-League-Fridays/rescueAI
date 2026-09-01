@@ -28,19 +28,16 @@ export function IncidentStageNav({
   locateHref,
 }: IncidentStageNavProps) {
   return (
-    <nav
-      aria-label="Incident stage"
-      className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-raised p-1"
-    >
+    <nav aria-label="Incident stage" className="inline-flex items-stretch border border-line">
       <StageLink
         href={locateHref ?? `/locate/${incidentId}`}
-        step="1"
+        step="01"
         label="Locate"
         active={stage === "locate"}
       />
       <StageLink
         href={`/rescue/${incidentId}`}
-        step="2"
+        step="02"
         label="Rescue"
         active={stage === "rescue"}
         state={rescueReady === undefined ? undefined : rescueReady ? "ready" : "waiting"}
@@ -83,14 +80,14 @@ function StageLink({
       href={href}
       title={hint}
       aria-current={active ? "page" : undefined}
-      className={`flex items-center gap-2 rounded-md px-3.5 py-2 text-[13px] font-semibold tracking-tight transition-colors ${
+      className={`flex items-center gap-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition-colors ${
         active
-          ? "bg-accent-400/15 text-accent-300 shadow-[inset_0_0_0_1px_rgb(255_176_32_/_0.35)]"
-          : "text-ink-400 hover:bg-surface-hover hover:text-ink-100"
+          ? "bg-signal/15 text-signal shadow-[inset_0_0_0_1px_rgb(61_214_245_/_0.40)]"
+          : "text-ink-400 hover:bg-surface-hover hover:text-ink-50"
       }`}
     >
       <span
-        className={`font-mono text-[11px] ${active ? "text-accent-400" : "text-ink-600"}`}
+        className={`font-mono text-[10px] tracking-label ${active ? "text-signal" : "text-ink-600"}`}
         aria-hidden
       >
         {step}

@@ -6,7 +6,7 @@ import type { SituationAssessment } from "@/types/telemetry";
 /** Where the subject is and what the ground around them looks like from above. */
 export function SituationCard({ situation }: { situation: SituationAssessment }) {
   return (
-    <section className="rounded-lg border border-line bg-surface-raised p-4">
+    <section className="hud-glass rounded-sm border border-line p-3">
       <SectionLabel>Situation</SectionLabel>
       <p className="mt-1 font-mono text-sm text-ink-100">
         {situation.groundPoint.lat.toFixed(5)}, {situation.groundPoint.lng.toFixed(5)}
