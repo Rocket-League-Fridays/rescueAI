@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { ElevationProfile } from "@/components/ElevationProfile";
+import { Stat } from "@/components/ui";
 import { cumulativeDistances, legForWaypointIndex } from "@/lib/geo";
 import { ROUTE_LEG_COLORS, ROUTE_LEG_LABELS } from "@/lib/route-colors";
 import type { IncidentDetail } from "@/types/incident";
@@ -52,7 +53,7 @@ export function RoutePanel({ job, incident, actions }: RoutePanelProps) {
   );
 
   return (
-    <section className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface-raised shadow-panel">
+    <section className="hud-glass flex flex-col overflow-hidden rounded-sm border border-line shadow-panel">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
         <h3 className="text-[15px] font-semibold tracking-tight text-ink-100">
           Route to subject
@@ -90,15 +91,6 @@ function TotalsRow({ route }: { route: Route }) {
       <Stat label="Distance" value={formatDistance(route.distanceMeters)} />
       <Stat label="Ascent" value={formatAscent(route.elevationGainMeters)} />
       <Stat label="On foot" value={formatMinutes(route.estimatedMinutes)} />
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded border border-line-soft bg-surface-sunken px-2 py-2">
-      <p className="font-mono text-[11px] uppercase tracking-label text-ink-500">{label}</p>
-      <p className="mt-1 font-mono text-sm text-ink-100">{value}</p>
     </div>
   );
 }

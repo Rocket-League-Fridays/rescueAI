@@ -15,20 +15,16 @@ interface SearchRoutePanelProps {
 }
 
 export function SearchRoutePanel({ route, incidentLabel, plannerMessage }: SearchRoutePanelProps) {
-  const [open, setOpen] = useState(route !== null);
+  const [open, setOpen] = useState(true);
 
   useEffect(() => {
     if (route) {
       setOpen(true);
     }
-  }, [route?.id]);
-
-  if (route === null && !plannerMessage) {
-    return null;
-  }
+  }, [route]);
 
   return (
-    <section className="overflow-hidden rounded-lg border border-line bg-surface-raised shadow-panel">
+    <section className="hud-glass overflow-hidden rounded-sm border border-line shadow-panel">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
         <button
           type="button"

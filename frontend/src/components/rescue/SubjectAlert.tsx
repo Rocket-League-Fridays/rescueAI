@@ -16,7 +16,9 @@ export function SubjectAlert({ detections, incident }: SubjectAlertProps) {
   );
 
   return (
-    <div className="rounded-lg border border-accent-400/45 bg-accent-400/[0.08] px-3.5 py-3">
+    <div className="corners text-target rounded-sm border border-target/45 bg-target/[0.08] px-3.5 py-3 shadow-glow-red">
+      <span className="corners-bl" aria-hidden />
+      <span className="corners-br" aria-hidden />
       <div className="flex items-center justify-between gap-2">
         <p className={labelClass}>Subject match</p>
         <StatusChip tone="probable" pulse>
@@ -25,7 +27,7 @@ export function SubjectAlert({ detections, incident }: SubjectAlertProps) {
       </div>
       <p className="mt-1.5 text-[15px] font-semibold tracking-tight text-ink-50">
         {incident.subject.displayName || "Person"} ·{" "}
-        <span className="font-mono text-accent-300">
+        <span className="font-mono text-caution">
           {Math.round((best.clothingMatchScore ?? 0) * 100)}%
         </span>{" "}
         clothing

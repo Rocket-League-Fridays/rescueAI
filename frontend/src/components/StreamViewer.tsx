@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
+import { Corners } from "@/components/ui";
 import type { Artifact, JobDetail } from "@/types/telemetry";
 
 interface StreamViewerProps {
@@ -8,6 +11,8 @@ interface StreamViewerProps {
   artifactContentUrl(artifactId: string): string;
   /** Stack the panels vertically instead of side by side (for narrow columns). */
   stacked?: boolean;
+  /** Bottom-center HUD dock with lightbox. */
+  dock?: boolean;
 }
 
 export function StreamViewer({
@@ -15,6 +20,7 @@ export function StreamViewer({
   subjectName = "Subject",
   artifactContentUrl,
   stacked = false,
+  dock = false,
 }: StreamViewerProps) {
   const annotated = latestArtifact(job?.artifacts, "annotated_frame");
   const raw =
@@ -23,32 +29,84 @@ export function StreamViewer({
         artifact.kind === "frame" && artifact.frameIndex === annotated?.frameIndex,
     ) ?? latestArtifact(job?.artifacts, "frame");
   const best = bestPerson(job);
+  const [lightbox, setLightbox] = useState<"source" | "evidence" | null>(null);
+
+  const sourceCaption = caption("CAM 01 · FRAME EVIDENCE", job, best);
+  const evidenceCaption = caption(
+    annotated ? "TARGET ACQUIRED" : "CAM 02 · DETECTION",
+    job,
+    best,
+  );
+
+  const source = (
+    <FeedPanel
+      title="Source frame"
+      artifact={raw}
+      artifactContentUrl={artifactContentUrl}
+      emptyLabel={jobMessage(job, "Extracting frames from sortie…")}
+      jobId={job?.id}
+      caption={sourceCaption}
+      onOpen={dock ? () => setLightbox("source") : undefined}
+    />
+  );
+  const evidence = (
+    <FeedPanel
+      title={annotated ? `${subjectName} located` : "Detection evidence"}
+      artifact={annotated}
+      artifactContentUrl={artifactContentUrl}
+      emptyLabel={jobMessage(job, "Running SAHI + YOLO person search…")}
+      jobId={job?.id}
+      highlight={Boolean(annotated)}
+      caption={evidenceCaption}
+      footer={
+        best
+          ? `PERSON ${(best.confidence * 100).toFixed(0)}% · CLOTHING ${(
+              (best.clothingMatchScore ?? 0) * 100
+            ).toFixed(0)}%`
+          : undefined
+      }
+      onOpen={dock ? () => setLightbox("evidence") : undefined}
+    />
+  );
+
+  const thumbs = dock ? (
+    <section className="w-full space-y-1.5">
+      {evidence}
+      {raw ? (
+        <button
+          type="button"
+          onClick={() => setLightbox("source")}
+          className="w-full text-left font-mono text-[10px] uppercase tracking-label text-ink-500 underline underline-offset-2 hover:text-signal"
+        >
+          Source frame
+        </button>
+      ) : null}
+    </section>
+  ) : (
+    <section className={`grid gap-2 ${stacked ? "grid-cols-1" : "md:grid-cols-2"}`}>
+      {source}
+      {evidence}
+    </section>
+  );
 
   return (
-    <section className={`grid gap-3 ${stacked ? "grid-cols-1" : "md:grid-cols-2"}`}>
-      <FeedPanel
-        title="Source frame"
-        artifact={raw}
-        artifactContentUrl={artifactContentUrl}
-        emptyLabel={jobMessage(job, "Extracting frames from sortie…")}
-        jobId={job?.id}
-      />
-      <FeedPanel
-        title={annotated ? `${subjectName} located` : "Detection evidence"}
-        artifact={annotated}
-        artifactContentUrl={artifactContentUrl}
-        emptyLabel={jobMessage(job, "Running SAHI + YOLO person search…")}
-        jobId={job?.id}
-        highlight={Boolean(annotated)}
-        footer={
-          best
-            ? `PERSON ${(best.confidence * 100).toFixed(0)}% · CLOTHING ${(
-                (best.clothingMatchScore ?? 0) * 100
-              ).toFixed(0)}%`
-            : undefined
-        }
-      />
-    </section>
+    <>
+      {thumbs}
+      {lightbox ? (
+        <Lightbox
+          title={lightbox === "source" ? "Source frame" : `${subjectName} located`}
+          src={
+            lightbox === "source" && raw
+              ? artifactContentUrl(raw.id)
+              : annotated
+                ? artifactContentUrl(annotated.id)
+                : null
+          }
+          caption={lightbox === "source" ? sourceCaption : evidenceCaption}
+          onClose={() => setLightbox(null)}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -60,6 +118,8 @@ function FeedPanel({
   jobId,
   highlight = false,
   footer,
+  caption,
+  onOpen,
 }: {
   title: string;
   artifact?: Artifact;
@@ -68,26 +128,28 @@ function FeedPanel({
   jobId?: string | null;
   highlight?: boolean;
   footer?: string;
+  caption: string;
+  onOpen?: () => void;
 }) {
-  return (
+  const frame = (
     <div
-      className={`overflow-hidden rounded-lg border bg-surface-raised shadow-panel ${
-        highlight ? "border-accent-400/60 shadow-glow" : "border-line"
+      className={`overflow-hidden rounded-sm border hud-glass shadow-panel ${
+        highlight ? "border-target/60 shadow-glow-red" : "border-line"
       }`}
     >
-      <header className="flex items-center justify-between gap-2 border-b border-line-soft px-4 py-2.5">
+      <header className="flex items-center justify-between gap-2 border-b border-line-soft px-2 py-1.5">
         <h3
-          className={`text-[15px] font-semibold tracking-tight ${
-            highlight ? "text-accent-300" : "text-ink-100"
+          className={`truncate text-[11px] font-semibold uppercase tracking-wide ${
+            highlight ? "text-target" : "text-ink-50"
           }`}
         >
           {title}
         </h3>
-        <span className="shrink-0 font-mono text-[11px] uppercase tracking-label text-ink-500">
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-label text-ink-500">
           {jobId ? `Job ${jobId.slice(0, 8)}` : "Standby"}
         </span>
       </header>
-      <div className="relative flex aspect-video items-center justify-center bg-black/75">
+      <div className="relative flex aspect-video items-center justify-center bg-black/80">
         {artifact ? (
           // Artifact URLs are generated by our own API and retain their original dimensions.
           // eslint-disable-next-line @next/next/no-img-element
@@ -101,18 +163,93 @@ function FeedPanel({
             <div className="mx-auto h-1 w-24 overflow-hidden rounded-full bg-surface-sunken">
               <div className="h-full w-1/2 animate-pulse rounded-full bg-status-searching" />
             </div>
-            <p className="text-[13px] text-ink-400">{emptyLabel}</p>
+            <p className="text-[12px] text-ink-400">{emptyLabel}</p>
           </div>
         )}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-void/75 px-2 py-1 font-mono text-[9px] uppercase tracking-label text-ink-300">
+          {caption}
+        </div>
       </div>
       {footer ? (
-        <footer className="flex items-center gap-2 border-t border-status-confirmed/30 bg-status-confirmed/[0.08] px-4 py-2 font-mono text-[11px] uppercase tracking-label text-status-confirmed">
+        <footer className="flex items-center gap-2 border-t border-status-confirmed/30 bg-status-confirmed/[0.08] px-2 py-1.5 font-mono text-[10px] uppercase tracking-label text-status-confirmed">
           <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
           Subject found · {footer}
         </footer>
       ) : null}
     </div>
   );
+
+  const wrapped = highlight ? (
+    <Corners colorClass="text-target">{frame}</Corners>
+  ) : (
+    <Corners colorClass="text-signal">{frame}</Corners>
+  );
+
+  if (!onOpen || !artifact) {
+    return wrapped;
+  }
+
+  return (
+    <button type="button" onClick={onOpen} className="block w-full text-left">
+      {wrapped}
+    </button>
+  );
+}
+
+function Lightbox({
+  title,
+  src,
+  caption,
+  onClose,
+}: {
+  title: string;
+  src: string | null;
+  caption: string;
+  onClose(): void;
+}) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-void/90 p-6"
+      role="dialog"
+      aria-modal
+      aria-label={title}
+      onClick={onClose}
+    >
+      <div
+        className="relative max-h-full max-w-5xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Corners colorClass="text-target">
+          <div className="overflow-hidden border border-line bg-black shadow-glow-red">
+            {src ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={src} alt={title} className="max-h-[80vh] w-full object-contain" />
+            ) : null}
+            <p className="bg-void/80 px-3 py-2 font-mono text-[10px] uppercase tracking-label text-ink-300">
+              {caption}
+            </p>
+          </div>
+        </Corners>
+      </div>
+    </div>
+  );
+}
+
+function caption(prefix: string, job: JobDetail | null, best: ReturnType<typeof bestPerson>): string {
+  const point = job?.situation?.groundPoint ?? best?.groundPoint;
+  const clothing = best ? `${Math.round((best.clothingMatchScore ?? 0) * 100)}%` : "—";
+  const coords = point ? `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}` : "NO FIX";
+  return `${prefix} · ${coords} · CLOTHING ${clothing}`;
 }
 
 function latestArtifact(
@@ -123,15 +260,10 @@ function latestArtifact(
 }
 
 function bestPerson(job: JobDetail | null) {
-  const people = (job?.detections ?? []).filter(
-    (detection) => detection.className === "person",
-  );
+  const people = (job?.detections ?? []).filter((detection) => detection.className === "person");
   return people.reduce<(typeof people)[number] | undefined>(
     (best, current) =>
-      !best ||
-      (current.clothingMatchScore ?? 0) > (best.clothingMatchScore ?? 0)
-        ? current
-        : best,
+      !best || (current.clothingMatchScore ?? 0) > (best.clothingMatchScore ?? 0) ? current : best,
     undefined,
   );
 }

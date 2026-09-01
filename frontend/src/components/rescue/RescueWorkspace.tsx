@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { DataOriginBanner } from "@/components/DataOriginBanner";
+import { CommandSurface } from "@/components/CommandSurface";
 import { ExportMenu } from "@/components/ExportMenu";
 import { IncidentStageNav } from "@/components/IncidentStageNav";
 import { CLOTHING_ALERT_THRESHOLD } from "@/components/locate/ScanMonitor";
-import { RoutePanel } from "@/components/RoutePanel";
+import { usePublishMission } from "@/components/MissionContext";
+import { GamePlanPanel } from "@/components/rescue/GamePlanPanel";
 import { SituationCard } from "@/components/rescue/SituationCard";
 import { SubjectAlert } from "@/components/rescue/SubjectAlert";
 import { StreamViewer } from "@/components/StreamViewer";
 import { TacticalMap } from "@/components/TacticalMap";
-import { buttonGhost, buttonSecondary, EmptyState } from "@/components/ui";
+import { buttonGhost, buttonSecondary, EmptyState, hudPanelClass, labelClass } from "@/components/ui";
 import { createApiClient } from "@/lib/api-client";
 import { createArtifactContentSource } from "@/lib/artifact-content";
 import { createOverrideStore } from "@/lib/incident-overrides";
@@ -65,6 +66,18 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
     void presenter.hydrate(incidentId);
   }, [incidentId, presenter]);
 
+  const onRefresh = useCallback(() => {
+    void presenter.refresh(incidentId);
+  }, [incidentId, presenter]);
+
+  usePublishMission({
+    incidentId: incidentId === NO_INCIDENT_ID ? undefined : incidentId,
+    rescueReady: incidentId === NO_INCIDENT_ID ? undefined : true,
+    jobStatus: presented?.job?.status ?? (incidentId === NO_INCIDENT_ID ? undefined : null),
+    onRefresh: incidentId === NO_INCIDENT_ID ? undefined : onRefresh,
+    isRefreshing: isLoading,
+  });
+
   if (incidentId === NO_INCIDENT_ID) {
     return <RescuePlaceholder />;
   }
@@ -72,25 +85,16 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
   if (unavailable !== null) {
     return (
       <div className="mx-auto max-w-2xl space-y-3 px-4 py-16 text-center">
-        <h2 className="text-xl font-semibold tracking-tight text-ink-50">
-          Incident unavailable
-        </h2>
+        <h2 className="text-xl font-semibold tracking-tight text-ink-50">Incident unavailable</h2>
         <p className="text-sm text-ink-400">{unavailable}</p>
         <p className="text-xs text-ink-500">
           Nothing cached in this tab for that id, and the server did not answer.
         </p>
         <div className="flex justify-center gap-2 pt-2">
-          <button
-            type="button"
-            onClick={() => void presenter.hydrate(incidentId)}
-            className={buttonSecondary}
-          >
+          <button type="button" onClick={() => void presenter.hydrate(incidentId)} className={buttonSecondary}>
             Retry
           </button>
-          <Link
-            href={`/locate/${incidentId}`}
-            className={buttonGhost}
-          >
+          <Link href={`/locate/${incidentId}`} className={buttonGhost}>
             Back to locate
           </Link>
         </div>
@@ -100,7 +104,7 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
 
   if (presented === null) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="px-4 py-8">
         <EmptyState>Loading incident…</EmptyState>
       </div>
     );
@@ -115,64 +119,29 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
   );
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 px-4 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <IncidentStageNav incidentId={incidentId} stage="rescue" rescueReady />
-        <button
-          type="button"
-          onClick={() => void presenter.refresh(incidentId)}
-          disabled={isLoading}
-          className={buttonGhost}
-        >
-          {isLoading ? "Refreshing…" : "Refresh"}
-        </button>
-      </div>
-
-      <DataOriginBanner origin={origin} staleness={staleness} />
-      {errorMessage ? (
-        <div className="flex items-start gap-2.5 rounded-lg border border-status-critical/50 bg-status-critical/10 px-3 py-2.5 text-[13px] text-status-critical">
-          {errorMessage}
-        </div>
-      ) : null}
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <div className="h-[460px]">
-            <TacticalMap
-              incident={incident}
-              job={job}
-              focus="rescue"
-              lastKnown={lastKnown.position}
-              searchRoute={presented.searchRoute}
-              title="Rescue map"
-              minHeightClass="min-h-[460px]"
-            />
-          </div>
-          <RoutePanel
-            incident={incident}
-            job={job}
-            actions={
-              <ExportMenu
-                route={
-                  route
-                    ? rescueRouteToExportable(route, incident.subject.displayName || "incident")
-                    : null
-                }
-                label="Export path"
-              />
-            }
-          />
-        </div>
-
-        <aside className="space-y-4">
+    <CommandSurface
+      origin={origin}
+      staleness={staleness}
+      errorMessage={errorMessage}
+      map={
+        <TacticalMap
+          incident={incident}
+          job={job}
+          focus="rescue"
+          lastKnown={lastKnown.position}
+          searchRoute={presented.searchRoute}
+          title="Rescue map"
+          bleed
+        />
+      }
+      left={
+        <>
           {clothingAlerts.length > 0 ? (
             <SubjectAlert detections={clothingAlerts} incident={incident} />
           ) : null}
           {job?.situation ? <SituationCard situation={job.situation} /> : null}
-          <section className="rounded-lg border border-line bg-surface-raised p-4">
-            <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">
-              Ground team brief
-            </h2>
+          <section className={`${hudPanelClass} p-3`}>
+            <p className={labelClass}>Ground team brief</p>
             <dl className="mt-3 space-y-2 text-xs">
               <Brief label="Subject" value={incident.subject.displayName || "—"} />
               <Brief
@@ -193,45 +162,62 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
               </p>
             ) : null}
           </section>
-          <StreamViewer
-            job={job ?? null}
-            subjectName={incident.subject.displayName || undefined}
-            artifactContentUrl={(artifactId) => artifactContent.urlFor(artifactId)}
-            stacked
-          />
-        </aside>
-      </div>
-    </div>
+        </>
+      }
+      right={
+        <GamePlanPanel
+          incident={incident}
+          job={job}
+          actions={
+            <ExportMenu
+              route={
+                route
+                  ? rescueRouteToExportable(route, incident.subject.displayName || "incident")
+                  : null
+              }
+              label="Export path"
+            />
+          }
+        />
+      }
+      dock={
+        <StreamViewer
+          job={job ?? null}
+          subjectName={incident.subject.displayName || undefined}
+          artifactContentUrl={(artifactId) => artifactContent.urlFor(artifactId)}
+          dock
+        />
+      }
+    />
   );
 }
 
-/** No incident has been started in this tab yet — labeled empty boxes, no fixture data. */
 function RescuePlaceholder() {
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-4 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <IncidentStageNav incidentId={NO_INCIDENT_ID} stage="rescue" locateHref="/" />
-      </div>
-
+      <IncidentStageNav incidentId={NO_INCIDENT_ID} stage="rescue" locateHref="/" />
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <section className="flex h-[460px] flex-col rounded-lg border border-line bg-surface-raised p-4">
-            <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">Rescue map</h2>
+          <section className={`${hudPanelClass} flex h-[460px] flex-col p-4`}>
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-ink-50">
+              Rescue map
+            </h2>
             <div className="mt-3 flex-1">
               <EmptyState>No incident started. Open an issue on the locate tab.</EmptyState>
             </div>
           </section>
-          <section className="rounded-lg border border-line bg-surface-raised p-4">
-            <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">Walk-back route</h2>
+          <section className={`${hudPanelClass} p-4`}>
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-ink-50">
+              Walk-back route
+            </h2>
             <div className="mt-3">
               <EmptyState>No route planned yet.</EmptyState>
             </div>
           </section>
         </div>
-
         <aside className="space-y-4">
-          <section className="rounded-lg border border-line bg-surface-raised p-4">
-            <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">
+          <section className={`${hudPanelClass} p-4`}>
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-ink-50">
               Ground team brief
             </h2>
             <dl className="mt-3 space-y-2 text-xs">
@@ -241,8 +227,10 @@ function RescuePlaceholder() {
               <Brief label="Landing zones" value="0 candidates" />
             </dl>
           </section>
-          <section className="rounded-lg border border-line bg-surface-raised p-4">
-            <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">Live feed</h2>
+          <section className={`${hudPanelClass} p-4`}>
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-ink-50">
+              Live feed
+            </h2>
             <div className="mt-3">
               <EmptyState>No footage yet.</EmptyState>
             </div>
@@ -256,7 +244,7 @@ function RescuePlaceholder() {
 function Brief({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="font-mono text-[11px] uppercase tracking-label text-ink-500">{label}</dt>
+      <dt className="font-mono text-[10px] uppercase tracking-label text-ink-500">{label}</dt>
       <dd className="min-w-0 truncate text-right text-ink-100">{value}</dd>
     </div>
   );
