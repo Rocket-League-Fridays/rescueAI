@@ -105,6 +105,7 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
   // prerender, so resolving this during render would desync the server and client markup.
   useEffect(() => {
     if (incidentId === null) {
+      presenter.forgetRecentIncident();
       setRescueTarget(presenter.rescueTargetIncidentId());
     }
   }, [incidentId, presenter]);

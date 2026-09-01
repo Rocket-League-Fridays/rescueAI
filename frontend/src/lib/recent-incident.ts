@@ -10,6 +10,7 @@ const CURRENT_KEY = "current";
 export interface RecentIncidentStore {
   read(): string | null;
   write(incidentId: string): void;
+  clear(): void;
 }
 
 class StoredRecentIncidentStore implements RecentIncidentStore {
@@ -21,6 +22,10 @@ class StoredRecentIncidentStore implements RecentIncidentStore {
 
   write(incidentId: string): void {
     this.store.write(CURRENT_KEY, incidentId);
+  }
+
+  clear(): void {
+    this.store.clear(CURRENT_KEY);
   }
 }
 

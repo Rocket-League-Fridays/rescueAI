@@ -85,6 +85,14 @@ export class LocatePresenter extends IncidentPagePresenter<LocateView> {
     this.recentIncidents.write(incidentId);
   }
 
+  /**
+   * Called when the intake landing mounts with no incident in the URL — the operator followed
+   * "New incident" or the title, so the Rescue tab must stop pointing at whatever was last open.
+   */
+  forgetRecentIncident(): void {
+    this.recentIncidents.clear();
+  }
+
   updateLastKnown(incidentId: string, position: LastKnownPosition): void {
     this.saveOverrides(incidentId, {
       ...this.readOverrides(incidentId),
