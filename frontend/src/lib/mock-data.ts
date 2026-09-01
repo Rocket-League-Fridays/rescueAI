@@ -113,7 +113,10 @@ const route: Route = {
   distanceMeters: 434.22,
   elevationGainMeters: 23,
   estimatedMinutes: 10.03,
+  inboundMinutes: 5.71,
   legs,
+  notes:
+    "Least-cost carry route: loaded descent weighted above ascent, refusing ground steeper than the carry ceiling. estimatedMinutes is the loaded carry out; inboundMinutes is the same path walked unloaded.",
 };
 
 const landingZones: LandingZone[] = [
@@ -129,6 +132,8 @@ const landingZones: LandingZone[] = [
     areaSqFt: 9977.5,
     canopyFraction: 0.08,
     suitabilityScore: 0.87,
+    assessedCriteria: ["slope", "footprint", "reachability", "canopy"],
+    unassessedCriteria: ["approach_clearance"],
     notes:
       "Scored on slope only: 4.2 deg max across the pad is the flattest bench in the corridor. Canopy 8% is reported for context and does not feed the score.",
   },
@@ -144,6 +149,8 @@ const landingZones: LandingZone[] = [
     areaSqFt: 9977.5,
     canopyFraction: null,
     suitabilityScore: 0.61,
+    assessedCriteria: ["slope", "footprint", "reachability"],
+    unassessedCriteria: ["canopy", "approach_clearance"],
     notes:
       "Scored on slope only: 9.6 deg max, usable but tilted. Canopy is unknown here (no overhead-cover estimate covers this site), so cover was not assessed either way.",
   },
@@ -159,6 +166,8 @@ const landingZones: LandingZone[] = [
     areaSqFt: 9977.5,
     canopyFraction: 0.34,
     suitabilityScore: 0.34,
+    assessedCriteria: ["slope", "footprint", "reachability", "canopy"],
+    unassessedCriteria: ["approach_clearance"],
     notes:
       "Scored on slope only: 15.1 deg max across the switchback shelf, marginal for a wheeled litter. Canopy 34% is informational and is not part of the score.",
   },
