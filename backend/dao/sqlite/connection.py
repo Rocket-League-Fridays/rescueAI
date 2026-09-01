@@ -113,6 +113,8 @@ CREATE TABLE IF NOT EXISTS landing_zones (
     area_sq_ft REAL NOT NULL,
     canopy_fraction REAL,
     suitability_score REAL NOT NULL DEFAULT 0,
+    assessed_criteria_json TEXT NOT NULL DEFAULT '[]',
+    unassessed_criteria_json TEXT NOT NULL DEFAULT '[]',
     notes TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (job_id) REFERENCES jobs(id)
 );
@@ -189,6 +191,8 @@ class SqliteConnectionProvider:
         for column, ddl in (
             ("canopy_fraction", "REAL"),
             ("suitability_score", "REAL NOT NULL DEFAULT 0"),
+            ("assessed_criteria_json", "TEXT NOT NULL DEFAULT '[]'"),
+            ("unassessed_criteria_json", "TEXT NOT NULL DEFAULT '[]'"),
             ("notes", "TEXT NOT NULL DEFAULT ''"),
         ):
             if column not in lz_cols:

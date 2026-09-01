@@ -11,6 +11,7 @@ from models.domain import (
     GeoPoint,
     Job,
     LandingZone,
+    LandingZoneCriterion,
     Route,
     RouteLegKind,
     RouteWaypoint,
@@ -35,10 +36,20 @@ _SQ_FT_PER_SQ_M = 10.763910416709722
 _TRAIL_TAIL_POINTS = 5
 _LZ_REACH_COST_WEIGHT = 0.02
 
+_LZ_ASSESSED = [
+    LandingZoneCriterion.SLOPE,
+    LandingZoneCriterion.FOOTPRINT,
+    LandingZoneCriterion.REACHABILITY,
+]
+_LZ_UNASSESSED = [
+    LandingZoneCriterion.CANOPY,
+    LandingZoneCriterion.APPROACH_CLEARANCE,
+]
 _LZ_NOTES = (
     "Slope-only suitability over the pad footprint, on a synthetic DEM. Pad is "
     "verified reachable under the carry slope ceiling. Canopy over the pad and "
-    "approach/departure clearance are not yet assessed."
+    "approach/departure clearance are NOT assessed — this site is not cleared "
+    "for a helicopter on these numbers alone."
 )
 _ROUTE_NOTES = (
     "Least-cost carry route: loaded descent weighted above ascent, refusing "
@@ -133,6 +144,8 @@ def _to_landing_zone(job_id: str, grid: TerrainGrid, cell: Cell) -> LandingZone:
         area_sq_ft=_bounds_area_sq_ft(bounds),
         canopy_fraction=None,
         suitability_score=_slope_suitability(max_slope),
+        assessed_criteria=list(_LZ_ASSESSED),
+        unassessed_criteria=list(_LZ_UNASSESSED),
         notes=_LZ_NOTES,
     )
 

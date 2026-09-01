@@ -13,6 +13,7 @@ If you add a field: update `domain.py`, `schemas.py`, `telemetry.ts` / `incident
 | `ArtifactKind` | `raw_video`, `frame`, `annotated_frame` |
 | `DetectionClassName` | `person`, `vehicle`, `other` |
 | `RouteLegKind` | `subject_link`, `off_trail`, `on_trail` |
+| `LandingZoneCriterion` | `slope`, `footprint`, `reachability`, `canopy`, `approach_clearance` |
 
 ## Geo / camera
 
@@ -132,7 +133,18 @@ NMS + restitch happen **inside** `CvPipeline` before you return this list. The w
 
 `suitabilityScore` is currently slope-only, and `canopyFraction` is always `null` because the only canopy estimate in the system describes the **subject's** surroundings ([`SituationAssessment.canopyFraction`](#situationassessment)), not a candidate pad. Populating it per-site needs georeferenced imagery sampled across the search area — a dependency on the CV seam, not a GIS-local change.
 
-**Deliberately not in this contract yet: approach and departure clearance.** It is the criterion that most determines whether a helicopter can actually use a site, and its shape is still open — clear bearing sectors, per-quadrant booleans, or a glide-slope angle. It is named here so its absence reads as a known gap rather than an oversight. Whoever implements obstacle clearance adds the field then, in one change across `domain.py`, `schemas.py`, `frontend/src/types/`, the SQLite mapping, and this doc.
+### What a site declares about itself
+
+`assessedCriteria` and `unassessedCriteria` partition every `LandingZoneCriterion`. A site states in structured form what was never checked, so the dashboard can surface it without parsing prose:
+
+```json
+"assessedCriteria":   ["slope", "footprint", "reachability"],
+"unassessedCriteria": ["canopy", "approach_clearance"]
+```
+
+**The UI must render `unassessedCriteria`.** A pad that reads as landable because nobody evaluated its approach is the failure these fields exist to prevent — and a `suitabilityScore` shown without them implies a completeness the number does not have. A test asserts the two lists are disjoint and together cover the whole enum, so adding a criterion forces someone to classify it rather than silently omit it.
+
+**Approach and departure clearance is declared, not measured.** It is the criterion that most determines whether a helicopter can actually use a site, and its measured shape is still open — clear bearing sectors, per-quadrant booleans, or a glide-slope angle. Until someone implements it, every site reports it as unassessed. Whoever does implement it adds the measurement field then, in one change across `domain.py`, `schemas.py`, `frontend/src/types/`, the SQLite mapping, and this doc.
 
 **RouteWaypoint:** `lat`, `lng`, `elevationMeters`.
 

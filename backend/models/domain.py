@@ -29,6 +29,14 @@ class IncidentStatus(str, Enum):
     CLOSED = "closed"
 
 
+class LandingZoneCriterion(str, Enum):
+    SLOPE = "slope"
+    FOOTPRINT = "footprint"
+    REACHABILITY = "reachability"
+    CANOPY = "canopy"
+    APPROACH_CLEARANCE = "approach_clearance"
+
+
 class RouteLegKind(str, Enum):
     SUBJECT_LINK = "subject_link"
     OFF_TRAIL = "off_trail"
@@ -109,6 +117,11 @@ class LandingZone:
     which is different from a measured zero. `suitability_score` orders
     candidates and `notes` records which criteria that score actually accounts
     for, so an operator is never guessing what was checked.
+
+    `assessed_criteria` and `unassessed_criteria` partition every
+    `LandingZoneCriterion`, so a site states in structured form what was never
+    checked. A pad that reads as landable because nobody evaluated its approach
+    is the failure this exists to prevent.
     """
 
     id: str
@@ -119,6 +132,8 @@ class LandingZone:
     area_sq_ft: float
     canopy_fraction: float | None = None
     suitability_score: float = 0.0
+    assessed_criteria: list[LandingZoneCriterion] = field(default_factory=list)
+    unassessed_criteria: list[LandingZoneCriterion] = field(default_factory=list)
     notes: str = ""
 
 

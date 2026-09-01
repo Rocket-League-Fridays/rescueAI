@@ -143,3 +143,38 @@ def test_total_cost_is_the_search_cost_not_the_ground_distance() -> None:
     assert route is not None
     assert route.total_cost > route.distance_meters
     assert math.isfinite(route.total_cost)
+
+
+def test_every_criterion_is_declared_assessed_or_not() -> None:
+    from models.domain import LandingZoneCriterion
+
+    job, telemetry, situation, trail = _scenario()
+    zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
+    zone = zones[0]
+    assessed = set(zone.assessed_criteria)
+    unassessed = set(zone.unassessed_criteria)
+
+    assert not assessed & unassessed, "a criterion cannot be both"
+    assert assessed | unassessed == set(LandingZoneCriterion), (
+        "a new criterion must be classified, not silently omitted"
+    )
+
+
+def test_approach_clearance_is_never_claimed_as_assessed() -> None:
+    from models.domain import LandingZoneCriterion
+
+    job, telemetry, situation, trail = _scenario()
+    zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
+    zone = zones[0]
+    assert LandingZoneCriterion.APPROACH_CLEARANCE in zone.unassessed_criteria
+    assert LandingZoneCriterion.CANOPY in zone.unassessed_criteria
+
+
+def test_unassessed_canopy_stays_null_and_is_declared() -> None:
+    from models.domain import LandingZoneCriterion
+
+    job, telemetry, situation, trail = _scenario()
+    zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
+    zone = zones[0]
+    assert zone.canopy_fraction is None
+    assert LandingZoneCriterion.CANOPY not in zone.assessed_criteria
