@@ -18,24 +18,24 @@ export function DataOriginBanner({ origin, staleness }: DataOriginBannerProps) {
   }
 
   return (
-    <div className="space-y-2">
+    <div>
       {origin === "fixture" ? (
-        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-accent-400/40 bg-accent-400/[0.07] px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 border-b border-status-probable/40 bg-status-probable/[0.07] px-3 py-1.5">
           <StatusChip tone="probable">Fixture</StatusChip>
-          <p className="text-[13px] text-accent-200">
+          <p className="text-[12px] text-status-probable">
             Committed demo data — not a live incident. Nothing here came from a backend.
           </p>
         </div>
       ) : null}
 
       {staleness ? (
-        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-status-stale/35 bg-status-stale/[0.07] px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 border-b border-status-stale/35 bg-status-stale/[0.07] px-3 py-1.5">
           <StatusChip tone="stale">Stale</StatusChip>
-          <p className="text-[13px] text-ink-300">
+          <p className="text-[12px] text-ink-300">
             {staleness.reason}
             {staleness.status === null ? "" : ` (${staleness.status})`}. Showing the last good data
             from{" "}
-            <span className="font-mono text-ink-200">{formatTimestamp(staleness.fetchedAt)}</span>.
+            <span className="font-mono text-ink-100">{formatTimestamp(staleness.fetchedAt)}</span>.
           </p>
         </div>
       ) : null}

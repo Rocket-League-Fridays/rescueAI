@@ -10,9 +10,12 @@ import {
   Polyline,
   Popup,
   TileLayer,
+  useMap,
+  useMapEvents,
 } from "react-leaflet";
 import L, { type LatLngExpression } from "leaflet";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import "leaflet/dist/leaflet.css";
 
 import { cumulativeDistances, legForWaypointIndex } from "@/lib/geo";
@@ -34,9 +37,15 @@ import type {
   RouteWaypoint,
 } from "@/types/telemetry";
 
-const FALLBACK_ROUTE_COLOR = "#f0c14b";
-/** Dark casing under every colored vector so it reads over both bright imagery and shadowed canopy. */
-const CASING_COLOR = "#0b100d";
+const FALLBACK_ROUTE_COLOR = "#FFB020";
+const CASING_COLOR = "#030608";
+const TRAIL_MID = "#5C6E80";
+const TRAIL_TOP = "#9FB1C1";
+const LZ_TOP = "#3DDC97";
+const LZ_ALT = "#5C6E80";
+const AMBER = "#FFB020";
+const TARGET = "#FF4D36";
+const SIGNAL = "#3DD6F5";
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
@@ -91,7 +100,7 @@ export default function TacticalMapCanvas({
               key={`buffer-${index}`}
               center={[point.lat, point.lng]}
               radius={bufferMeters}
-              pathOptions={{ color: "#8a9a58", weight: 0, fillColor: "#8a9a58", fillOpacity: 0.16 }}
+              pathOptions={{ color: TRAIL_MID, weight: 0, fillColor: TRAIL_MID, fillOpacity: 0.1 }}
             />
           ))
         : null}
@@ -102,10 +111,10 @@ export default function TacticalMapCanvas({
         />
       ) : null}
       {trail.length > 1 ? (
-        <Polyline positions={trail} pathOptions={{ color: "#8a9a58", weight: 6, opacity: 0.55 }} />
+        <Polyline positions={trail} pathOptions={{ color: TRAIL_MID, weight: 6, opacity: 0.55 }} />
       ) : null}
       {trail.length > 1 ? (
-        <Polyline positions={trail} pathOptions={{ color: "#c4d67c", weight: 2 }} />
+        <Polyline positions={trail} pathOptions={{ color: TRAIL_TOP, weight: 2 }} />
       ) : null}
       {searchRoute
         ? searchRoute.legs.map((leg, index) => (
@@ -174,7 +183,7 @@ export default function TacticalMapCanvas({
           pathOptions={{
             color: CASING_COLOR,
             weight: 2,
-            fillColor: "#c4d67c",
+            fillColor: LZ_TOP,
             fillOpacity: 1,
           }}
         >
@@ -186,37 +195,24 @@ export default function TacticalMapCanvas({
           </Popup>
         </CircleMarker>
       ) : null}
-      {job?.telemetry ? (
-        <CircleMarker
-          center={[job.telemetry.position.lat, job.telemetry.position.lng]}
-          radius={7}
-          pathOptions={{
-            color: CASING_COLOR,
-            weight: 2,
-            fillColor: "#f0c14b",
-            fillOpacity: 0.95,
-          }}
-        >
-          <Popup>Drone / sortie fix</Popup>
-        </CircleMarker>
-      ) : null}
+      {job?.telemetry ? <DroneFixMarker position={job.telemetry.position} /> : null}
       {pin ? (
-        <CircleMarker
-          center={[pin.lat, pin.lng]}
-          radius={10}
-          pathOptions={{
-            color: CASING_COLOR,
-            weight: 2.5,
-            fillColor: "#ff6b4a",
-            fillOpacity: 0.95,
-          }}
-        >
-          <Popup>
-            {incident?.subject.displayName ?? "Subject"} · match{" "}
-            {((subject?.clothingMatchScore ?? 0) * 100).toFixed(0)}%
-          </Popup>
-        </CircleMarker>
+        <SubjectReticle
+          point={pin}
+          name={incident?.subject.displayName ?? "Subject"}
+          matchPercent={((subject?.clothingMatchScore ?? 0) * 100).toFixed(0)}
+        />
       ) : null}
+      {lastKnown && (job?.status === "queued" || job?.status === "processing") ? (
+        <RadarSweep
+          center={
+            isLocate && incident?.likelyLocations?.[0]
+              ? incident.likelyLocations[0].point
+              : lastKnown.point
+          }
+        />
+      ) : null}
+      <CursorHud />
     </MapContainer>
   );
 }
@@ -378,12 +374,12 @@ function LandingZoneShape({ zone, rank }: { zone: LandingZone; rank: number }) {
         positions={outline}
         pathOptions={
           isTopPick
-            ? { color: "#c4d67c", weight: 3, fillColor: "#c4d67c", fillOpacity: 0.2 }
+            ? { color: LZ_TOP, weight: 3, fillColor: LZ_TOP, fillOpacity: 0.22 }
             : {
-                color: "#8a9a58",
+                color: LZ_ALT,
                 weight: 2,
                 dashArray: "6 6",
-                fillColor: "#8a9a58",
+                fillColor: LZ_ALT,
                 fillOpacity: 0.1,
               }
         }
@@ -489,7 +485,7 @@ function LikelyLocationMarker({
   rank: number;
   assumedTime: boolean;
 }) {
-  const fill = rank === 0 ? "#FFB020" : "#FFCE73";
+  const fill = rank === 0 ? AMBER : "#FFCE73";
   return (
     <CircleMarker
       center={[location.point.lat, location.point.lng]}
@@ -543,8 +539,8 @@ function LastKnownOverlay({
         iconSize: [18, 18],
         iconAnchor: [9, 9],
         html:
-          '<div style="width:18px;height:18px;border-radius:9999px;background:#f0c14b;' +
-          `border:2px solid ${CASING_COLOR};box-shadow:0 0 0 3px rgba(240,193,75,0.28);` +
+          `<div style="width:18px;height:18px;border-radius:9999px;background:${AMBER};` +
+          `border:2px solid ${CASING_COLOR};box-shadow:0 0 0 3px rgba(255,176,32,0.28);` +
           `cursor:${draggable ? "grab" : "default"}"></div>`,
       }),
     [draggable],
@@ -556,10 +552,10 @@ function LastKnownOverlay({
         center={[ring.lat, ring.lng]}
         radius={lastKnown.radiusMeters}
         pathOptions={{
-          color: "#f0c14b",
+          color: AMBER,
           weight: 1.5,
           dashArray: "5 6",
-          fillColor: "#f0c14b",
+          fillColor: AMBER,
           fillOpacity: 0.08,
         }}
       />
@@ -663,6 +659,100 @@ function resolveCenter(
     return [job.telemetry.position.lat, job.telemetry.position.lng];
   }
   return [40.24555, -111.62815];
+}
+
+function SubjectReticle({
+  point,
+  name,
+  matchPercent,
+}: {
+  point: GeoPoint;
+  name: string;
+  matchPercent: string;
+}) {
+  const icon = useMemo(
+    () =>
+      L.divIcon({
+        className: "",
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        html:
+          `<div style="width:36px;height:36px;position:relative;filter:drop-shadow(0 0 8px ${TARGET})">` +
+          `<div class="reticle-spin" style="position:absolute;inset:0;border:1px dashed ${TARGET};border-radius:50%"></div>` +
+          `<div style="position:absolute;left:50%;top:2px;bottom:2px;width:1px;background:${TARGET};transform:translateX(-50%)"></div>` +
+          `<div style="position:absolute;top:50%;left:2px;right:2px;height:1px;background:${TARGET};transform:translateY(-50%)"></div>` +
+          `<div style="position:absolute;left:50%;top:50%;width:8px;height:8px;border:1px solid ${TARGET};border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 10px ${TARGET}"></div>` +
+          `</div>`,
+      }),
+    [],
+  );
+  return (
+    <Marker position={[point.lat, point.lng]} icon={icon}>
+      <Popup>
+        {name} · match {matchPercent}%
+      </Popup>
+    </Marker>
+  );
+}
+
+function DroneFixMarker({ position }: { position: GeoPoint }) {
+  const icon = useMemo(
+    () =>
+      L.divIcon({
+        className: "",
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+        html:
+          `<div style="width:12px;height:12px;margin:2px;background:${SIGNAL};transform:rotate(45deg);` +
+          `box-shadow:0 0 10px ${SIGNAL};border:1px solid ${CASING_COLOR}"></div>`,
+      }),
+    [],
+  );
+  return (
+    <Marker position={[position.lat, position.lng]} icon={icon}>
+      <Popup>Drone / sortie fix</Popup>
+    </Marker>
+  );
+}
+
+function RadarSweep({ center }: { center: GeoPoint }) {
+  const icon = useMemo(
+    () =>
+      L.divIcon({
+        className: "",
+        iconSize: [180, 180],
+        iconAnchor: [90, 90],
+        html:
+          `<div style="width:180px;height:180px;position:relative;pointer-events:none">` +
+          `<div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg, transparent 0 68%, rgba(61,214,245,0.38) 100%);animation:sweep 3.2s linear infinite"></div>` +
+          `<div style="position:absolute;inset:18px;border-radius:50%;border:1px solid rgba(61,214,245,0.35);animation:ping-ring 2.4s cubic-bezier(0,0,0.2,1) infinite"></div>` +
+          `</div>`,
+      }),
+    [],
+  );
+  return <Marker position={[center.lat, center.lng]} icon={icon} interactive={false} />;
+}
+
+function CursorHud() {
+  const map = useMap();
+  const [coords, setCoords] = useState<string | null>(null);
+  useMapEvents({
+    mousemove(event) {
+      setCoords(`${event.latlng.lat.toFixed(5)}°  ${event.latlng.lng.toFixed(5)}°`);
+    },
+    mouseout() {
+      setCoords(null);
+    },
+  });
+  if (!coords) {
+    return null;
+  }
+  return createPortal(
+    <div className="pointer-events-none absolute bottom-8 left-2 z-[500] font-mono text-[10px] uppercase tracking-label text-signal">
+      {coords}
+    </div>,
+    map.getContainer(),
+  );
 }
 
 function boundsToPolygon(bounds: GeoBounds): LatLngExpression[] {

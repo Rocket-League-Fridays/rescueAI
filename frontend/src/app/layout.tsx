@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Source_Sans_3 } from "next/font/google";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
-import { CommandHeader } from "@/components/CommandHeader";
+import { MissionShell } from "@/components/MissionShell";
 import "./globals.css";
 
-const sourceSans = Source_Sans_3({
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
 });
@@ -27,11 +27,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${sourceSans.variable} ${ibmPlexMono.variable} font-sans`}>
-        <div className="min-h-screen">
-          <CommandHeader />
-          <main>{children}</main>
-        </div>
+      <body className={`${spaceGrotesk.variable} ${ibmPlexMono.variable} font-sans`}>
+        <MissionShell>{children}</MissionShell>
       </body>
     </html>
   );

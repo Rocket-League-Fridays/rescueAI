@@ -40,13 +40,13 @@ export function ExportMenu({ route, label = "Export route" }: ExportMenuProps) {
         {label} ▾
       </button>
       {isOpen && !disabled ? (
-        <ul className="absolute right-0 z-[1000] mt-1 w-48 overflow-hidden rounded border border-line bg-surface-raised shadow-lg">
+        <ul className="absolute right-0 z-[1000] mt-1 w-48 overflow-hidden rounded-sm border border-line hud-glass shadow-panel">
           {FORMATS.map((format) => (
             <li key={format}>
               <button
                 type="button"
                 onClick={() => handleExport(format)}
-                className="block w-full px-3 py-2 text-left text-xs font-semibold uppercase tracking-label text-ink-200 transition-colors hover:bg-surface-hover hover:text-accent-300"
+                className="block w-full px-3 py-2 text-left text-xs font-semibold uppercase tracking-label text-ink-200 transition-colors hover:bg-surface-hover hover:text-signal"
               >
                 {EXPORT_FORMAT_LABELS[format]}
               </button>

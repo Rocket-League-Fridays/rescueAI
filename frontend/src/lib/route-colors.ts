@@ -3,9 +3,9 @@ import type { RouteLegKind } from "@/types/telemetry";
 
 /** Ordered by how hard the leg is to walk: green is the easy trail, orange is the final push. */
 export const ROUTE_LEG_COLORS: Record<RouteLegKind, string> = {
-  subject_link: "#ff7a45",
-  off_trail: "#ffb020",
-  on_trail: "#3ddc97",
+  subject_link: "#FF4D36",
+  off_trail: "#FFB020",
+  on_trail: "#3DDC97",
 };
 
 export const ROUTE_LEG_LABELS: Record<RouteLegKind, string> = {
@@ -16,9 +16,9 @@ export const ROUTE_LEG_LABELS: Record<RouteLegKind, string> = {
 
 /** Search-route hues, kept here beside the rescue hues so map, panel, and table never disagree. */
 export const SEARCH_LEG_COLORS: Record<SearchLegKind, string> = {
-  transit: "#7aa2f7",
-  transect: "#38bdf8",
-  turn: "#4a6b85",
+  transit: "#5C6E80",
+  transect: "#3DD6F5",
+  turn: "#2A6E80",
 };
 
 export const SEARCH_LEG_LABELS: Record<SearchLegKind, string> = {
