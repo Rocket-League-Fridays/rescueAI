@@ -11,6 +11,7 @@ Read this folder before writing code. It is the source of truth for **decisions*
 | [04-contracts.md](04-contracts.md) | Before adding or renaming a field |
 | [05-wbs-ownership.md](05-wbs-ownership.md) | To know which files you own |
 | [06-out-of-scope.md](06-out-of-scope.md) | Before pulling YOLO, DEM APIs, Docker, or AWS |
+| [07-frontend-data-map.md](07-frontend-data-map.md) | Before building an endpoint the UI consumes, or changing what it displays |
 
 Project-wide coding standards (DI, factories, MVP, logging): [`AGENTS.md`](../../AGENTS.md) at the repo root.
 

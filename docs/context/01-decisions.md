@@ -101,3 +101,45 @@ These were agreed while scaffolding. Do not silently reverse them.
 **Decision:** `YTrailGisRouter` reads elevation from a **committed USGS 3DEP tile** — `backend/demo/y_mountain_dem.npz`, 178×160 samples at ~10 m over the Y corridor, fetched once by `backend/scripts/fetch_dem.py` (62 KB). Nothing hits the network at request time. Corridors outside that tile fall back to a synthetic surface, and every `LandingZone` reports which one produced its numbers. No live 3DEP or Overpass on stage.
 
 **Why the cached tile rather than the synthetic:** the synthetic was `elevation = f(distance from trail)` — monotonic, with no ridges. A* over it returned the straight line it was meant to replace, so a working router and a broken one were indistinguishable. Real relief is what makes the search observable: on the demo fixture the direct line crosses 50°, well past what a litter carry can cross.
+
+## D18 — Keyless satellite basemap with trail / road overlays
+
+**Decision:** `TacticalMapCanvas` offers four Leaflet base layers — Esri World Imagery (**default**), OpenTopoMap, USGS Imagery+Topo, OSM Street — plus two overlays on by default: Waymarked Trails (hiking routes) and Esri World Transportation (roads and labels).
+
+**Why:** An operator siting a helicopter LZ and a walk-back needs to see real terrain, vegetation, and road access — flat OSM tiles show none of that. Every source is keyless, so nothing new has to be provisioned for the demo.
+
+**Watch out:** Esri and USGS ArcGIS tiles are `{z}/{y}/{x}`; OSM-style tiles are `{z}/{x}/{y}`. Swapping them yields blank or wrong-location tiles with no error. Each layer sets `maxNativeZoom` so Leaflet upscales past its native resolution instead of requesting 404s.
+
+**Consequence:** Route, LZ, and trail overlays carry dark casing strokes so they stay legible over bright imagery. Leg hues live in `frontend/src/lib/route-colors.ts` and are shared with the elevation chart and waypoint table — change them in one place or the three views stop agreeing.
+
+**Rejected:** Mapbox / MapLibre (needs a key; still out of scope). Google satellite (ToS).
+
+## D19 — Two operational pages: Locate and Rescue
+
+**Decision:** The dashboard is split along the operational story. `/` opens an incident from a
+transcript; `/locate/{incidentId}` owns the last-known pin, scan parameters, the drone search
+route and its export, sortie attach, and scan results; `/rescue/{incidentId}` owns the subject
+fix, ranked landing zones, the walk-back path, and the elevation profile. Both incident pages are
+URL-addressable and refetch on their own.
+
+**Why:** The single route conflated data entry with the operational view, and the tactical picture
+had no address — a reload mid-incident lost it. The split also matches the work breakdown: Locate
+consumes the search planner, Rescue consumes the GIS router.
+
+**Consequences:**
+
+- `mock` is a **reserved incident id**. `/locate/mock` and `/rescue/mock` serve the committed
+  fixture with no network at all, so the whole interface demos with zero backend. Fixture data is
+  always badged; it must never render unbadged.
+- Last-known-good snapshots are cached per incident id in `sessionStorage`. A failed or 404
+  refresh re-presents the cached data with a staleness readout — it never blanks the page. Only a
+  cold tab with no cache and no server shows an explicit "Incident unavailable" state.
+- `DashboardPresenter` / `DashboardView` are replaced by `LocatePresenter` / `RescuePresenter`
+  over a shared `IncidentPagePresenter` skeleton. All still React-free, per D9.
+- Operator edits to subject fields, corridor buffer, and the last-known pin are a **client-side
+  review layer** with per-field `AUTO` / `EDITED` provenance, because the backend has no incident
+  PATCH and does not persist those values. See
+  [`07-frontend-data-map.md`](07-frontend-data-map.md).
+
+**Rejected:** A global store alone (page 2 blanks on reload). Addressing the fixture by its UUID
+(the URL would look indistinguishable from a real incident).

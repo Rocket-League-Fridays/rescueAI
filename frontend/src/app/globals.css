@@ -15,3 +15,94 @@ body {
   background: #0b100d;
   font-family: inherit;
 }
+
+.leaflet-container .leaflet-control-layers {
+  background: #0d1310;
+  border: 1px solid #3d4a2c;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.5);
+  color: #c4d67c;
+}
+
+/* The toggle glyph is a dark raster sprite; invert it, so the swatch behind it must be pre-inverted. */
+.leaflet-container .leaflet-control-layers-toggle {
+  background-color: #f2ecef;
+  filter: invert(1);
+}
+
+.leaflet-container .leaflet-control-layers-expanded {
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.leaflet-container .leaflet-control-layers-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #c4d67c;
+  cursor: pointer;
+}
+
+.leaflet-container .leaflet-control-layers-list input {
+  accent-color: #c4d67c;
+  margin: 0;
+}
+
+.leaflet-container .leaflet-control-layers-separator {
+  border-top: 1px solid #3d4a2c;
+  margin: 6px 0;
+}
+
+.leaflet-container .leaflet-control-attribution {
+  background: rgb(13 19 16 / 0.85);
+  border-top: 1px solid #3d4a2c;
+  border-left: 1px solid #3d4a2c;
+  border-top-left-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #9aab72;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: #c4d67c;
+  text-decoration: underline;
+}
+
+.leaflet-container .leaflet-popup-content-wrapper {
+  background: #0d1310;
+  border: 1px solid #3d4a2c;
+  border-radius: 4px;
+  color: #e6efd2;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.55);
+}
+
+.leaflet-container .leaflet-popup-tip {
+  background: #0d1310;
+  border: 1px solid #3d4a2c;
+  box-shadow: none;
+}
+
+.leaflet-container .leaflet-popup-content a {
+  color: #c4d67c;
+}
+
+.leaflet-container .leaflet-popup-close-button {
+  color: #9aab72;
+}
+
+.leaflet-container .leaflet-popup-close-button:hover {
+  color: #e6efd2;
+}
+
+.leaflet-container .leaflet-bar a {
+  background: #0d1310;
+  border-bottom: 1px solid #3d4a2c;
+  color: #c4d67c;
+}
+
+.leaflet-container .leaflet-bar a:hover {
+  background: #16201a;
+  color: #e6efd2;
+}
