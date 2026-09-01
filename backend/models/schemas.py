@@ -414,6 +414,8 @@ class IncidentOut(CamelModel):
     updated_at: datetime
     situation_id: str | None = None
     corridor_buffer_meters: float = 80
+    last_known_point: GeoPointSchema | None = None
+    last_known_radius_meters: float | None = None
 
     @classmethod
     def from_domain(cls, incident: Incident, corridor_buffer_meters: float = 80) -> Self:
@@ -428,6 +430,12 @@ class IncidentOut(CamelModel):
             updated_at=incident.updated_at,
             situation_id=incident.situation_id,
             corridor_buffer_meters=corridor_buffer_meters,
+            last_known_point=(
+                None
+                if incident.last_known_point is None
+                else GeoPointSchema.from_domain(incident.last_known_point)
+            ),
+            last_known_radius_meters=incident.last_known_radius_meters,
         )
 
 

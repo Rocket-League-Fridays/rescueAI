@@ -6,9 +6,9 @@ import type { GeoPoint } from "@/types/telemetry";
 /**
  * Operator review layer over what `KeywordTranscriptExtractor` returned.
  *
- * The backend has no incident PATCH and does not persist `corridorBufferMeters` or a last-known
- * point (see `docs/context/07-frontend-seams.md`), so operator edits live here. They are applied
- * over every fetch, including refreshes, because the server keeps returning extractor values.
+ * Last-known from a lat/lng pair in the transcript is persisted on the incident. Operator pin
+ * drags and corridor-buffer edits still live here until PATCH exists
+ * (see `docs/context/07-frontend-data-map.md`).
  */
 export interface IncidentOverrides {
   displayName?: string;
@@ -119,10 +119,33 @@ export function resolveLastKnown(
       source: "extracted",
     };
   }
+  const fromTranscript = extractLastKnownFromTranscript(incident.transcript);
+  if (fromTranscript) {
+    return { position: { point: fromTranscript, radiusMeters: radius }, source: "extracted" };
+  }
   return {
     position: { point: corridorMidpoint(incident.trailLine), radiusMeters: radius },
     source: "assumed",
   };
+}
+
+const COORD_RE = /(-?\d{1,3}\.\d{3,})\s*[, ]\s*(-?\d{1,3}\.\d{3,})/;
+
+/** Pull the first plausible lat/lng pair out of a distress call. */
+export function extractLastKnownFromTranscript(transcript: string): GeoPoint | null {
+  const match = COORD_RE.exec(transcript);
+  if (match === null) {
+    return null;
+  }
+  const lat = Number(match[1]);
+  const lng = Number(match[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return null;
+  }
+  return { lat, lng };
 }
 
 function corridorMidpoint(trailLine: GeoPoint[]): GeoPoint {

@@ -9,12 +9,27 @@ from fastapi.testclient import TestClient
 
 
 def test_extractor_reads_josh_and_red_and_y_trail() -> None:
-    subject, trail = KeywordTranscriptExtractor().extract(
+    extracted = KeywordTranscriptExtractor().extract(
         Path(__file__).resolve().parents[1].joinpath("demo/josh_y_trail_transcript.txt").read_text()
     )
-    assert subject.display_name == "Josh"
-    assert "red" in subject.clothing_colors
-    assert trail == "Y Mountain Trail"
+    assert extracted.subject.display_name == "Josh"
+    assert "red" in extracted.subject.clothing_colors
+    assert extracted.trail_name == "Y Mountain Trail"
+    assert extracted.last_known is None
+
+
+def test_extractor_reads_calvin_and_river_coords() -> None:
+    extracted = KeywordTranscriptExtractor().extract(
+        "Dispatch, riverside hiker near 40.3884811, -111.5447873. "
+        "His name is Calvin. Green waders and a black hoodie."
+    )
+    assert extracted.subject.display_name == "Calvin"
+    assert "green" in extracted.subject.clothing_colors
+    assert "black" in extracted.subject.clothing_colors
+    assert extracted.trail_name == "Unknown trail"
+    assert extracted.last_known is not None
+    assert extracted.last_known.lat == 40.3884811
+    assert extracted.last_known.lng == -111.5447873
 
 
 def test_trail_catalog_loads_y_line() -> None:
@@ -39,6 +54,7 @@ def test_create_demo_incident_api(tmp_path: Path) -> None:
     body = response.json()
     assert body["subject"]["displayName"] == "Josh"
     assert body["trailName"] == "Y Mountain Trail"
+    assert body["lastKnownPoint"] is None
     assert len(body["trailLine"]) > 5
 
     active = client.get("/incidents/active")
@@ -67,3 +83,28 @@ def test_create_demo_incident_api(tmp_path: Path) -> None:
     )
     assert job.status_code == 201
     assert job.json()["incidentId"] == body["id"]
+
+
+def test_create_incident_persists_transcript_coords(tmp_path: Path) -> None:
+    settings = Settings(
+        database_path=str(tmp_path / "sar.db"),
+        artifacts_dir=str(tmp_path / "artifacts"),
+        ingest_dir=str(tmp_path / "inbox"),
+        ingest_watch_enabled=False,
+        yolo_enabled=False,
+        demo_dir=resolve_demo_dir("demo"),
+    )
+    client = TestClient(create_app(settings))
+    river = client.post(
+        "/incidents",
+        json={
+            "transcript": (
+                "Dispatch, riverside hiker near 40.3884811, -111.5447873. "
+                "His name is Calvin. Green waders and a black hoodie."
+            )
+        },
+    )
+    assert river.status_code == 201
+    body = river.json()
+    assert body["subject"]["displayName"] == "Calvin"
+    assert body["lastKnownPoint"] == {"lat": 40.3884811, "lng": -111.5447873}

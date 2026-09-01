@@ -57,8 +57,9 @@ seam message instead of a failure.
 ### Not implemented — incident field persistence (Member: intake)
 
 There is no incident update endpoint, and `corridor_buffer_meters` is currently a hardcoded `80`
-in `IncidentOut.from_domain` that is never stored. Until that changes, four operator-entered values
-live only in the browser (see §3). Suggested shape:
+in `IncidentOut.from_domain` that is never stored. A lat/lng pair in the distress transcript is
+persisted as `lastKnownPoint` on create. Pin drags, radius, subject edits, and buffer still live
+only in the browser (see §3). Suggested shape:
 
 ```
 PATCH /incidents/{incidentId}
@@ -117,7 +118,7 @@ sidecar on the inbox path; the stub only has to pass `POST /telemetry` validatio
 | Element | Reads | Behavior when absent |
 | --- | --- | --- |
 | Map corridor | `Incident.trailLine`, `Incident.corridorBufferMeters` | No corridor drawn |
-| Map last-known pin + ring | `lastKnownPoint`, `lastKnownRadiusMeters` | Falls back to corridor midpoint, chip reads `ASSUMED` |
+| Map last-known pin + ring | `lastKnownPoint`, `lastKnownRadiusMeters` | Transcript coords first; else corridor midpoint / Y trailhead, chip reads `ASSUMED` |
 | Map search pattern | `SearchRoute.legs[]` sliced over `waypoints[]` | Layer omitted |
 | Search totals | `distanceMeters`, `estimatedMinutes`, `altitudeAglMeters`, `coverageAreaSqMeters` | Panel shows empty state |
 | Search legs list | `legs[].kind \| label \| distanceMeters \| estimatedMinutes` | — |

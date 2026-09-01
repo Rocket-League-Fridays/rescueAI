@@ -214,6 +214,8 @@ class Incident:
     created_at: datetime
     updated_at: datetime
     situation_id: str | None = None
+    last_known_point: GeoPoint | None = None
+    last_known_radius_meters: float | None = None
 
 
 @dataclass
