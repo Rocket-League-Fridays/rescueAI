@@ -6,6 +6,13 @@ export type DetectionClassName = "person" | "vehicle" | "other";
 
 export type RouteLegKind = "subject_link" | "off_trail" | "on_trail";
 
+export type LandingZoneCriterion =
+  | "slope"
+  | "footprint"
+  | "reachability"
+  | "canopy"
+  | "approach_clearance";
+
 export interface GeoPoint {
   lat: number;
   lng: number;
@@ -83,6 +90,13 @@ export interface LandingZone {
   canopyFraction?: number | null;
   /** 0..1, higher is better. Read `notes` for which criteria it accounts for. */
   suitabilityScore: number;
+  /** Criteria this site was actually evaluated against. */
+  assessedCriteria: LandingZoneCriterion[];
+  /**
+   * Criteria never evaluated. Surface these — a pad that reads as landable
+   * because nobody checked its approach is the failure this prevents.
+   */
+  unassessedCriteria: LandingZoneCriterion[];
   notes: string;
 }
 
@@ -111,8 +125,13 @@ export interface Route {
   landingZoneId?: string | null;
   distanceMeters: number;
   elevationGainMeters: number;
+  /** Loaded carry out — the leg the route is optimised for. */
   estimatedMinutes: number;
+  /** The same path walked unloaded on the way in. */
+  inboundMinutes: number;
   legs: RouteLeg[];
+  /** Which pace profile and cost rules produced the numbers above. */
+  notes: string;
 }
 
 export interface Job {

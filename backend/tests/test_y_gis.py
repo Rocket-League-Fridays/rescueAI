@@ -11,7 +11,8 @@ from models.domain import (
     SituationAssessment,
 )
 from services.gis.route_metrics import summarize
-from services.gis.y_trail_router import YTrailGisRouter, _build_dem, _slope_suitability
+from services.gis.terrain import build_corridor_grid
+from services.gis.y_trail_router import YTrailGisRouter, _slope_suitability
 from services.intake.incident_service import resolve_demo_dir
 from services.intake.trail_catalog import TrailCatalog
 
@@ -109,14 +110,9 @@ def test_landing_zone_slope_is_the_worst_slope_in_the_footprint() -> None:
     job, telemetry, situation, trail = _scenario()
     zones, _ = YTrailGisRouter().route(job, telemetry, situation, trail)
     zone = zones[0]
-    cells = _build_dem(trail, situation.ground_point)
-    inside = [
-        cell.slope
-        for cell in cells
-        if zone.bounds.south_west.lat <= cell.centroid.lat <= zone.bounds.north_east.lat
-        and zone.bounds.south_west.lng <= cell.centroid.lng <= zone.bounds.north_east.lng
-    ]
-    assert zone.max_slope_degrees == max(inside)
+    grid = build_corridor_grid(trail, situation.ground_point)
+    assert zone.max_slope_degrees == grid.max_slope_in(zone.bounds)
+    assert zone.max_slope_degrees >= grid.slope_at(zone.centroid)
 
 
 def test_landing_zone_leaves_canopy_unknown_rather_than_borrowing_the_subjects() -> None:

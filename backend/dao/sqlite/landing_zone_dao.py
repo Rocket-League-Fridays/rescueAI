@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
+
 from dao.interface.landing_zone_dao import LandingZoneDao
 from dao.sqlite.connection import SqliteConnectionProvider
-from models.domain import GeoBounds, GeoPoint, LandingZone
+from models.domain import GeoBounds, GeoPoint, LandingZone, LandingZoneCriterion
 
 
 class SqliteLandingZoneDao(LandingZoneDao):
@@ -22,8 +24,9 @@ class SqliteLandingZoneDao(LandingZoneDao):
                     id, job_id, centroid_lat, centroid_lng,
                     bounds_sw_lat, bounds_sw_lng, bounds_ne_lat, bounds_ne_lng,
                     max_slope_degrees, area_sq_ft, canopy_fraction,
-                    suitability_score, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    suitability_score, assessed_criteria_json,
+                    unassessed_criteria_json, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 [
                     (
@@ -39,6 +42,8 @@ class SqliteLandingZoneDao(LandingZoneDao):
                         landing_zone.area_sq_ft,
                         landing_zone.canopy_fraction,
                         landing_zone.suitability_score,
+                        json.dumps([c.value for c in landing_zone.assessed_criteria]),
+                        json.dumps([c.value for c in landing_zone.unassessed_criteria]),
                         landing_zone.notes,
                     )
                     for landing_zone in landing_zones
@@ -76,5 +81,12 @@ class SqliteLandingZoneDao(LandingZoneDao):
             area_sq_ft=row["area_sq_ft"],
             canopy_fraction=row["canopy_fraction"],
             suitability_score=row["suitability_score"],
+            assessed_criteria=[
+                LandingZoneCriterion(value) for value in json.loads(row["assessed_criteria_json"])
+            ],
+            unassessed_criteria=[
+                LandingZoneCriterion(value)
+                for value in json.loads(row["unassessed_criteria_json"])
+            ],
             notes=row["notes"],
         )

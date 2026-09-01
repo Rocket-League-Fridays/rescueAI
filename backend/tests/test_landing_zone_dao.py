@@ -12,6 +12,7 @@ from models.domain import (
     Job,
     JobStatus,
     LandingZone,
+    LandingZoneCriterion,
 )
 
 
@@ -55,6 +56,8 @@ def _landing_zone(**overrides: object) -> LandingZone:
         area_sq_ft=9687.5,
         canopy_fraction=None,
         suitability_score=0.19,
+        assessed_criteria=[LandingZoneCriterion.SLOPE],
+        unassessed_criteria=[LandingZoneCriterion.APPROACH_CLEARANCE],
         notes="slope only",
     )
     defaults.update(overrides)

@@ -14,7 +14,7 @@ Do not pull these in “while you are here” unless the team explicitly expands
 ## Still later
 
 - Persisting SAHI tiles to disk (tiler is in-memory only)
-- OpenTopography or USGS 3DEP HTTP client as the primary path
+- OpenTopography or a USGS 3DEP HTTP client **at request time**. `backend/scripts/fetch_dem.py` is a one-off that writes a committed tile; the serving path only reads that file
 - RichDEM / rasterio production slope rasters
 - Helicopter-scale A* (demo walk-back is subject → LZ → trail → trailhead)
 - Live video streaming / frame websocket

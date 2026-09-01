@@ -41,9 +41,10 @@ class SqliteRouteDao(RouteDao):
                 """
                 INSERT INTO routes (
                     id, job_id, waypoints_json, total_cost, landing_zone_id,
-                    distance_meters, elevation_gain_meters, estimated_minutes, legs_json
+                    distance_meters, elevation_gain_meters, estimated_minutes,
+                    inbound_minutes, legs_json, notes
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     route.id,
@@ -54,7 +55,9 @@ class SqliteRouteDao(RouteDao):
                     route.distance_meters,
                     route.elevation_gain_meters,
                     route.estimated_minutes,
+                    route.inbound_minutes,
                     legs_json,
+                    route.notes,
                 ),
             )
 
@@ -97,6 +100,8 @@ class SqliteRouteDao(RouteDao):
             distance_meters=row["distance_meters"],
             elevation_gain_meters=row["elevation_gain_meters"],
             estimated_minutes=row["estimated_minutes"],
+            inbound_minutes=row["inbound_minutes"],
+            notes=row["notes"],
             legs=[
                 RouteLeg(
                     kind=RouteLegKind(leg["kind"]),

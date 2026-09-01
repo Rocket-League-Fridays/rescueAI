@@ -29,6 +29,14 @@ class IncidentStatus(str, Enum):
     CLOSED = "closed"
 
 
+class LandingZoneCriterion(str, Enum):
+    SLOPE = "slope"
+    FOOTPRINT = "footprint"
+    REACHABILITY = "reachability"
+    CANOPY = "canopy"
+    APPROACH_CLEARANCE = "approach_clearance"
+
+
 class RouteLegKind(str, Enum):
     SUBJECT_LINK = "subject_link"
     OFF_TRAIL = "off_trail"
@@ -109,6 +117,11 @@ class LandingZone:
     which is different from a measured zero. `suitability_score` orders
     candidates and `notes` records which criteria that score actually accounts
     for, so an operator is never guessing what was checked.
+
+    `assessed_criteria` and `unassessed_criteria` partition every
+    `LandingZoneCriterion`, so a site states in structured form what was never
+    checked. A pad that reads as landable because nobody evaluated its approach
+    is the failure this exists to prevent.
     """
 
     id: str
@@ -119,6 +132,8 @@ class LandingZone:
     area_sq_ft: float
     canopy_fraction: float | None = None
     suitability_score: float = 0.0
+    assessed_criteria: list[LandingZoneCriterion] = field(default_factory=list)
+    unassessed_criteria: list[LandingZoneCriterion] = field(default_factory=list)
     notes: str = ""
 
 
@@ -147,6 +162,10 @@ class Route:
     `total_cost` is the search cost the router minimized (distance plus terrain
     penalties), not a distance. Operator-facing readouts use `distance_meters`,
     `elevation_gain_meters`, and `estimated_minutes`.
+
+    `estimated_minutes` is the loaded carry out; `inbound_minutes` is the same
+    path walked unloaded on the way in. `notes` records which pace profile
+    produced them, because the two differ by more than the terrain does.
     """
 
     id: str
@@ -157,7 +176,9 @@ class Route:
     distance_meters: float = 0.0
     elevation_gain_meters: float = 0.0
     estimated_minutes: float = 0.0
+    inbound_minutes: float = 0.0
     legs: list[RouteLeg] = field(default_factory=list)
+    notes: str = ""
 
 
 @dataclass

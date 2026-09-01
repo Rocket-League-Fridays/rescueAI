@@ -21,6 +21,7 @@ from models.domain import (
     Job,
     JobStatus,
     LandingZone,
+    LandingZoneCriterion,
     Route,
     RouteLeg,
     RouteLegKind,
@@ -211,6 +212,8 @@ class LandingZoneOut(CamelModel):
     area_sq_ft: float = Field(ge=0)
     canopy_fraction: float | None = Field(default=None, ge=0, le=1)
     suitability_score: float = Field(default=0.0, ge=0, le=1)
+    assessed_criteria: list[LandingZoneCriterion] = Field(default_factory=list)
+    unassessed_criteria: list[LandingZoneCriterion] = Field(default_factory=list)
     notes: str = ""
 
     @classmethod
@@ -224,6 +227,8 @@ class LandingZoneOut(CamelModel):
             area_sq_ft=landing_zone.area_sq_ft,
             canopy_fraction=landing_zone.canopy_fraction,
             suitability_score=landing_zone.suitability_score,
+            assessed_criteria=list(landing_zone.assessed_criteria),
+            unassessed_criteria=list(landing_zone.unassessed_criteria),
             notes=landing_zone.notes,
         )
 
@@ -291,7 +296,9 @@ class RouteOut(CamelModel):
     distance_meters: float = Field(default=0.0, ge=0)
     elevation_gain_meters: float = Field(default=0.0, ge=0)
     estimated_minutes: float = Field(default=0.0, ge=0)
+    inbound_minutes: float = Field(default=0.0, ge=0)
     legs: list[RouteLegSchema] = Field(default_factory=list)
+    notes: str = ""
 
     @classmethod
     def from_domain(cls, route: Route) -> Self:
@@ -304,7 +311,9 @@ class RouteOut(CamelModel):
             distance_meters=route.distance_meters,
             elevation_gain_meters=route.elevation_gain_meters,
             estimated_minutes=route.estimated_minutes,
+            inbound_minutes=route.inbound_minutes,
             legs=[RouteLegSchema.from_domain(leg) for leg in route.legs],
+            notes=route.notes,
         )
 
 

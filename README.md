@@ -56,7 +56,7 @@ Copy a recorded Mini 4K `.mp4` / `.mov` (and the sibling `.SRT` if DJI Fly wrote
 3. Drop a pre-recorded Mini `DJI_*.MP4` + `.SRT` into `backend/data/inbox/`, or attach the file and coordinates on the dashboard.
 4. The dashboard polls the job through YOLO completion, then shows the winning source frame and a boxed **subject found** evidence image. GIS draws the pin, LZ, and walk-back.
 
-Committed demo files live in `backend/demo/` (`josh_y_trail_transcript.txt`, `y_mountain_trail.geojson`). GIS uses a synthetic DEM around that corridor — no live 3DEP on stage. YOLO11n loads when `ultralytics` is installed (`SAR_YOLO_ENABLED=true`); otherwise frames still extract and GIS can still route from the drone fix.
+Committed demo files live in `backend/demo/` (`josh_y_trail_transcript.txt`, `y_mountain_trail.geojson`, `y_mountain_dem.npz`). GIS reads elevation from a committed USGS 3DEP tile (`y_mountain_dem.npz`, ~10 m); re-fetch with `python scripts/fetch_dem.py`. Nothing hits the network on stage. YOLO11n loads when `ultralytics` is installed (`SAR_YOLO_ENABLED=true`); otherwise frames still extract and GIS can still route from the drone fix.
 
 ## Layout
 
@@ -70,7 +70,8 @@ Committed demo files live in `backend/demo/` (`josh_y_trail_transcript.txt`, `y_
 | `backend/demo/` | Committed Josh transcript + Y-trail GeoJSON |
 | `backend/services/intake/` | Transcript extract + trail catalog |
 | `backend/services/cv/` | YOLO person detector, NMS, clothing score |
-| `backend/services/gis/` | Y-trail synthetic DEM router |
+| `backend/services/gis/` | Terrain, carry cost surface, A*, Y-trail router |
+| `backend/scripts/fetch_dem.py` | One-off USGS 3DEP fetch for the committed tile |
 | `backend/services/ingest/` | OpenCV extractor, SAHI tiler, SRT parser, folder watcher, pinhole georeference |
 | `backend/services/stubs/` | CV / GIS fallbacks |
 | `backend/tasks/async_workers.py` | Background job processor |
@@ -85,7 +86,7 @@ Metadata lives in `backend/data/sar.db`. Videos and frames live in `backend/data
 | --- | --- | --- |
 | 1 — Data pipeline | Ingest, OpenCV frames, SAHI, SRT/watch folder, incident attach | `OpenCvFrameExtractor`, `IngestWatcher`, `IncidentService` |
 | 2 — Computer vision | YOLO11 person + clothing HSV + NMS/restitch | `ClothingScoringCvPipeline` |
-| 3 — GIS | Cached/synthetic Y DEM, LZ, walk-back to trail | `YTrailGisRouter` |
+| 3 — GIS | Cached 3DEP terrain, carry cost surface, A*, LZ + walk-back | `YTrailGisRouter` |
 | 4 — Frontend | Intake → corridor → find → LZ dashboard | `DashboardPresenter`, `TacticalMap` |
 
 Do not instantiate SQLite or stub classes outside `main.py` / factories. Inject `DaoFactory` and service interfaces.

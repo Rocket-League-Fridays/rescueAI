@@ -11,28 +11,78 @@ from models.domain import (
     GeoPoint,
     Job,
     LandingZone,
+    LandingZoneCriterion,
     Route,
     RouteLegKind,
     RouteWaypoint,
     SituationAssessment,
 )
-from services.gis.route_metrics import build_leg, haversine_m, summarize
+from services.gis.astar import Cell, cost_field, find_path, path_cost, trace_path
+from services.gis.cost_surface import CarryCostSurface
+from services.gis.route_metrics import (
+    CARRY_PACE_FACTOR,
+    TERRAIN_PACE_FACTOR,
+    build_leg,
+    haversine_m,
+    leg_minutes,
+    summarize,
+)
+from services.gis.terrain import (
+    DEFAULT_CELL_METERS,
+    ELEVATION_SOURCE_CACHED,
+    ELEVATION_SOURCE_SYNTHETIC,
+    TerrainGrid,
+    build_corridor_grid,
+)
 from services.interface.gis_router import GisRouter
 
-_METERS_PER_DEG_LAT = 111_320.0
-_MAX_SLOPE_DEG = 8.0
-_MAX_CANOPY = 0.55
+_MAX_LZ_SLOPE_DEG = 8.0
 _LZ_HALF_M = 15.0
-_TRAIL_TAIL_POINTS = 5
 _SQ_FT_PER_SQ_M = 10.763910416709722
-_LZ_NOTES = (
-    "Slope-only suitability from a synthetic DEM. Canopy over the pad and "
-    "approach/departure clearance are not yet assessed."
+_TRAIL_TAIL_POINTS = 5
+_LZ_REACH_COST_WEIGHT = 0.02
+
+_LZ_ASSESSED = [
+    LandingZoneCriterion.SLOPE,
+    LandingZoneCriterion.FOOTPRINT,
+    LandingZoneCriterion.REACHABILITY,
+]
+_LZ_UNASSESSED = [
+    LandingZoneCriterion.CANOPY,
+    LandingZoneCriterion.APPROACH_CLEARANCE,
+]
+_DEM_LABEL = {
+    ELEVATION_SOURCE_CACHED: "cached USGS 3DEP elevation (10 m)",
+    ELEVATION_SOURCE_SYNTHETIC: "a synthetic fallback surface, not real elevation",
+}
+
+
+def _lz_notes(source: str) -> str:
+    dem = _DEM_LABEL.get(source, source)
+    return (
+        f"Slope-only suitability over the pad footprint, from {dem}. Pad is "
+        "verified reachable under the carry slope ceiling. Canopy over the pad "
+        "and approach/departure clearance are NOT assessed — this site is not "
+        "cleared for a helicopter on these numbers alone."
+    )
+_ROUTE_NOTES = (
+    "Least-cost carry route: loaded descent weighted above ascent, refusing "
+    "ground steeper than the carry ceiling. estimatedMinutes is the loaded "
+    "carry out; inboundMinutes is the same path walked unloaded."
 )
 
 
 class YTrailGisRouter(GisRouter):
-    """Demo GIS using a cached synthetic DEM around the Y trail — not live 3DEP."""
+    """Carry-optimised routing over the Y Mountain corridor.
+
+    The route is chosen for the leg that binds — carrying a subject out — not
+    for the walk in, so it will trade distance for ground a litter team can
+    actually cross. Elevation comes from a committed USGS 3DEP tile; corridors
+    outside it fall back to a synthetic surface, which each site reports.
+    """
+
+    def __init__(self, cell_meters: float = DEFAULT_CELL_METERS) -> None:
+        self._cell_meters = cell_meters
 
     def route(
         self,
@@ -43,171 +93,178 @@ class YTrailGisRouter(GisRouter):
     ) -> tuple[list[LandingZone], Route | None]:
         trail = trail_line or []
         subject = situation.ground_point if situation is not None else telemetry.position
-        canopy = situation.canopy_fraction if situation is not None else 0.35
-        grid = _build_dem(trail, subject)
-        lz_cell = _best_lz(grid, subject, canopy)
+        grid = build_corridor_grid(trail, subject, self._cell_meters)
+        surface = CarryCostSurface(grid)
+
+        subject_cell = grid.index_of(subject)
+        reach_cost, came_from = cost_field(grid, subject_cell, surface.step_cost)
+        lz_cell = _select_landing_zone(grid, reach_cost)
         if lz_cell is None:
             return [], None
-        landing_zone = _to_landing_zone(job.id, lz_cell, grid)
-        route = _walk_back(job.id, subject, lz_cell.centroid, trail, landing_zone.id, grid)
+
+        carry_path = trace_path(came_from, subject_cell, lz_cell)
+        if carry_path is None:
+            return [], None
+
+        landing_zone = _to_landing_zone(job.id, grid, lz_cell)
+        route = _build_route(
+            job.id, grid, surface, carry_path, trail, landing_zone.id, reach_cost[lz_cell]
+        )
         return [landing_zone], route
 
 
-class _Cell:
-    def __init__(self, lat: float, lng: float, slope: float, elevation: float) -> None:
-        self.centroid = GeoPoint(lat=lat, lng=lng)
-        self.slope = slope
-        self.elevation = elevation
+def _footprint_max_slope(slope: np.ndarray, radius: int) -> np.ndarray:
+    rows, cols = slope.shape
+    padded = np.pad(slope, radius, mode="edge")
+    worst = np.full_like(slope, -np.inf)
+    for row_offset in range(2 * radius + 1):
+        for col_offset in range(2 * radius + 1):
+            worst = np.maximum(worst, padded[row_offset : row_offset + rows, col_offset : col_offset + cols])
+    return worst
 
 
-def _build_dem(trail: list[GeoPoint], subject: GeoPoint) -> list[_Cell]:
-    lats = [subject.lat] + [point.lat for point in trail]
-    lngs = [subject.lng] + [point.lng for point in trail]
-    lat0, lat1 = min(lats) - 0.002, max(lats) + 0.002
-    lng0, lng1 = min(lngs) - 0.002, max(lngs) + 0.002
-    lats_axis = np.linspace(lat0, lat1, 28)
-    lngs_axis = np.linspace(lng0, lng1, 28)
-    elev = np.zeros((len(lats_axis), len(lngs_axis)))
-    for i, lat in enumerate(lats_axis):
-        for j, lng in enumerate(lngs_axis):
-            progress = _trail_progress(GeoPoint(lat=lat, lng=lng), trail)
-            dist = _min_trail_distance_m(GeoPoint(lat=lat, lng=lng), trail)
-            elev[i, j] = 1450 + 90 * progress + 0.35 * dist
-    dlat_m = (lats_axis[1] - lats_axis[0]) * _METERS_PER_DEG_LAT
-    dlng_m = (lngs_axis[1] - lngs_axis[0]) * _METERS_PER_DEG_LAT * math.cos(
-        math.radians(subject.lat)
-    )
-    gy, gx = np.gradient(elev, dlat_m, dlng_m)
-    slope = np.degrees(np.arctan(np.sqrt(gx**2 + gy**2)))
-    cells: list[_Cell] = []
-    for i, lat in enumerate(lats_axis):
-        for j, lng in enumerate(lngs_axis):
-            cells.append(_Cell(float(lat), float(lng), float(slope[i, j]), float(elev[i, j])))
-    return cells
-
-
-def _best_lz(cells: list[_Cell], subject: GeoPoint, canopy: float) -> _Cell | None:
-    eligible = [
-        cell
-        for cell in cells
-        if cell.slope <= _MAX_SLOPE_DEG and canopy <= _MAX_CANOPY
+def _select_landing_zone(grid: TerrainGrid, reach_cost: dict[Cell, float]) -> Cell | None:
+    radius = max(1, round(_LZ_HALF_M / grid.cell_meters))
+    worst = _footprint_max_slope(grid.slope, radius)
+    candidates = [
+        (cell, cost)
+        for cell, cost in reach_cost.items()
+        if worst[cell] <= _MAX_LZ_SLOPE_DEG
     ]
-    if not eligible:
-        eligible = sorted(cells, key=lambda cell: cell.slope)[:8]
-    return min(eligible, key=lambda cell: haversine_m(cell.centroid, subject) + cell.slope * 8)
+    if not candidates:
+        reachable = list(reach_cost.items())
+        if not reachable:
+            return None
+        return min(reachable, key=lambda item: (worst[item[0]], item[1]))[0]
+    return min(candidates, key=lambda item: worst[item[0]] + item[1] * _LZ_REACH_COST_WEIGHT)[0]
 
 
-def _to_landing_zone(job_id: str, cell: _Cell, cells: list[_Cell]) -> LandingZone:
-    dlat = _LZ_HALF_M / _METERS_PER_DEG_LAT
-    dlng = _LZ_HALF_M / (_METERS_PER_DEG_LAT * max(0.2, math.cos(math.radians(cell.centroid.lat))))
+def _to_landing_zone(job_id: str, grid: TerrainGrid, cell: Cell) -> LandingZone:
+    centroid = grid.point_at(*cell)
+    dlat = _LZ_HALF_M / 111_320.0
+    dlng = _LZ_HALF_M / (111_320.0 * max(0.2, math.cos(math.radians(centroid.lat))))
     bounds = GeoBounds(
-        south_west=GeoPoint(lat=cell.centroid.lat - dlat, lng=cell.centroid.lng - dlng),
-        north_east=GeoPoint(lat=cell.centroid.lat + dlat, lng=cell.centroid.lng + dlng),
+        south_west=GeoPoint(lat=centroid.lat - dlat, lng=centroid.lng - dlng),
+        north_east=GeoPoint(lat=centroid.lat + dlat, lng=centroid.lng + dlng),
     )
-    max_slope = _max_slope_in_bounds(cells, bounds, cell.slope)
+    max_slope = grid.max_slope_in(bounds)
+    if max_slope is None:
+        max_slope = grid.slope_at(centroid)
     return LandingZone(
         id=str(uuid4()),
         job_id=job_id,
-        centroid=cell.centroid,
+        centroid=centroid,
         bounds=bounds,
         max_slope_degrees=max_slope,
         area_sq_ft=_bounds_area_sq_ft(bounds),
         canopy_fraction=None,
         suitability_score=_slope_suitability(max_slope),
-        notes=_LZ_NOTES,
+        assessed_criteria=list(_LZ_ASSESSED),
+        unassessed_criteria=list(_LZ_UNASSESSED),
+        notes=_lz_notes(grid.source),
     )
 
 
-def _max_slope_in_bounds(cells: list[_Cell], bounds: GeoBounds, fallback: float) -> float:
-    inside = [
-        cell.slope
+def _build_route(
+    job_id: str,
+    grid: TerrainGrid,
+    surface: CarryCostSurface,
+    carry_path: list[Cell],
+    trail: list[GeoPoint],
+    landing_zone_id: str,
+    carry_cost: float,
+) -> Route:
+    cells = list(carry_path)
+    trail_entry_index: int | None = None
+    trail_tail: list[GeoPoint] = []
+
+    if trail:
+        lz_cell = cells[-1]
+        to_trail, entry_index = _route_to_trail(grid, surface, lz_cell, trail)
+        if to_trail:
+            trail_entry_index = len(cells) - 1
+            cells.extend(to_trail[1:])
+            trail_tail = list(reversed(trail[: entry_index + 1][-_TRAIL_TAIL_POINTS:]))[1:]
+
+    waypoints = [
+        RouteWaypoint(
+            lat=grid.point_at(*cell).lat,
+            lng=grid.point_at(*cell).lng,
+            elevation_meters=float(grid.elevation[cell]),
+        )
         for cell in cells
-        if bounds.south_west.lat <= cell.centroid.lat <= bounds.north_east.lat
-        and bounds.south_west.lng <= cell.centroid.lng <= bounds.north_east.lng
     ]
-    return max(inside) if inside else fallback
+    off_trail_end = len(waypoints) - 1
+    waypoints.extend(
+        RouteWaypoint(lat=point.lat, lng=point.lng, elevation_meters=grid.elevation_at(point))
+        for point in trail_tail
+    )
+
+    legs = [
+        build_leg(
+            RouteLegKind.SUBJECT_LINK,
+            "Subject to LZ",
+            waypoints,
+            0,
+            trail_entry_index if trail_entry_index is not None else len(carry_path) - 1,
+        )
+    ]
+    if trail_entry_index is not None and off_trail_end > trail_entry_index:
+        legs.append(
+            build_leg(RouteLegKind.OFF_TRAIL, "LZ to trail", waypoints, trail_entry_index, off_trail_end)
+        )
+    if len(waypoints) - 1 > off_trail_end:
+        legs.append(
+            build_leg(
+                RouteLegKind.ON_TRAIL, "Trail to trailhead", waypoints, off_trail_end, len(waypoints) - 1
+            )
+        )
+
+    distance, elevation_gain, carry_minutes = summarize(legs)
+    return Route(
+        id=str(uuid4()),
+        job_id=job_id,
+        waypoints=waypoints,
+        total_cost=carry_cost,
+        landing_zone_id=landing_zone_id,
+        distance_meters=distance,
+        elevation_gain_meters=elevation_gain,
+        estimated_minutes=carry_minutes,
+        inbound_minutes=sum(leg_minutes(leg, TERRAIN_PACE_FACTOR) for leg in legs),
+        legs=legs,
+        notes=_ROUTE_NOTES,
+    )
+
+
+def _route_to_trail(
+    grid: TerrainGrid,
+    surface: CarryCostSurface,
+    lz_cell: Cell,
+    trail: list[GeoPoint],
+) -> tuple[list[Cell], int]:
+    reach, came_from = cost_field(grid, lz_cell, surface.step_cost)
+    best_index = None
+    best_cost = math.inf
+    for index, point in enumerate(trail):
+        cell = grid.index_of(point)
+        cost = reach.get(cell)
+        if cost is not None and cost < best_cost:
+            best_cost, best_index = cost, index
+    if best_index is None:
+        return [], 0
+    path = trace_path(came_from, lz_cell, grid.index_of(trail[best_index]))
+    return (path or []), best_index
 
 
 def _bounds_area_sq_ft(bounds: GeoBounds) -> float:
     height_m = haversine_m(
-        bounds.south_west,
-        GeoPoint(lat=bounds.north_east.lat, lng=bounds.south_west.lng),
+        bounds.south_west, GeoPoint(lat=bounds.north_east.lat, lng=bounds.south_west.lng)
     )
     width_m = haversine_m(
-        bounds.south_west,
-        GeoPoint(lat=bounds.south_west.lat, lng=bounds.north_east.lng),
+        bounds.south_west, GeoPoint(lat=bounds.south_west.lat, lng=bounds.north_east.lng)
     )
     return height_m * width_m * _SQ_FT_PER_SQ_M
 
 
 def _slope_suitability(max_slope_degrees: float) -> float:
-    return max(0.0, min(1.0, 1.0 - max_slope_degrees / _MAX_SLOPE_DEG))
-
-
-def _walk_back(
-    job_id: str,
-    subject: GeoPoint,
-    lz: GeoPoint,
-    trail: list[GeoPoint],
-    landing_zone_id: str,
-    cells: list[_Cell],
-) -> Route:
-    points = [subject, lz]
-    trail_start_index: int | None = None
-    if trail:
-        nearest_index = min(range(len(trail)), key=lambda i: haversine_m(lz, trail[i]))
-        trail_start_index = len(points)
-        points.extend(reversed(trail[: nearest_index + 1][-_TRAIL_TAIL_POINTS:]))
-    waypoints = [
-        RouteWaypoint(
-            lat=point.lat,
-            lng=point.lng,
-            elevation_meters=_elevation_at(cells, point),
-        )
-        for point in points
-    ]
-    legs = [build_leg(RouteLegKind.SUBJECT_LINK, "Subject to LZ", waypoints, 0, 1)]
-    if trail_start_index is not None:
-        legs.append(
-            build_leg(RouteLegKind.OFF_TRAIL, "LZ to trail", waypoints, 1, trail_start_index)
-        )
-        if len(waypoints) - 1 > trail_start_index:
-            legs.append(
-                build_leg(
-                    RouteLegKind.ON_TRAIL,
-                    "Trail to trailhead",
-                    waypoints,
-                    trail_start_index,
-                    len(waypoints) - 1,
-                )
-            )
-    distance, elevation_gain, minutes = summarize(legs)
-    return Route(
-        id=str(uuid4()),
-        job_id=job_id,
-        waypoints=waypoints,
-        total_cost=distance,
-        landing_zone_id=landing_zone_id,
-        distance_meters=distance,
-        elevation_gain_meters=elevation_gain,
-        estimated_minutes=minutes,
-        legs=legs,
-    )
-
-
-def _elevation_at(cells: list[_Cell], point: GeoPoint) -> float:
-    nearest = min(cells, key=lambda cell: haversine_m(cell.centroid, point))
-    return nearest.elevation
-
-
-def _trail_progress(point: GeoPoint, trail: list[GeoPoint]) -> float:
-    if not trail:
-        return 0.5
-    nearest_index = min(range(len(trail)), key=lambda i: haversine_m(point, trail[i]))
-    return nearest_index / max(1, len(trail) - 1)
-
-
-def _min_trail_distance_m(point: GeoPoint, trail: list[GeoPoint]) -> float:
-    if not trail:
-        return 0.0
-    return min(haversine_m(point, vertex) for vertex in trail)
+    return max(0.0, min(1.0, 1.0 - max_slope_degrees / _MAX_LZ_SLOPE_DEG))
