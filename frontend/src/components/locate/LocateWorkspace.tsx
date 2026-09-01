@@ -158,7 +158,6 @@ export function LocateWorkspace({ incidentId }: LocateWorkspaceProps) {
         rescueTarget={rescueTarget}
         onTranscriptChange={setTranscript}
         onOpenIncident={() => void presenter.openIncident(transcript)}
-        onLoadFixtureTranscript={() => void presenter.loadFixtureTranscript()}
         onSeedData={() => presenter.seedMockIncident()}
       />
     );
@@ -270,7 +269,6 @@ function IntakeLanding({
   rescueTarget,
   onTranscriptChange,
   onOpenIncident,
-  onLoadFixtureTranscript,
   onSeedData,
 }: {
   transcript: string;
@@ -279,7 +277,6 @@ function IntakeLanding({
   rescueTarget: string;
   onTranscriptChange(value: string): void;
   onOpenIncident(): void;
-  onLoadFixtureTranscript(): void;
   onSeedData(): void;
 }) {
   return (
@@ -292,7 +289,6 @@ function IntakeLanding({
           isOpened={false}
           onTranscriptChange={onTranscriptChange}
           onOpenIncident={onOpenIncident}
-          onLoadFixtureTranscript={onLoadFixtureTranscript}
         />
         <FlowExplainer onSeedData={onSeedData} />
       </div>
@@ -304,7 +300,7 @@ function IntakeLanding({
 function FlowExplainer({ onSeedData }: { onSeedData(): void }) {
   const steps = [
     ["1 · Locate", "Transcript in, last-known pin set, search route planned and exported."],
-    ["2 · Scan", "Recorded sortie runs through detection and returns the subject's position."],
+    ["2 · Scan", "Footage runs through detection and returns the subject's position."],
     ["3 · Rescue", "Landing zone sited and a walk-back path drawn for the ground team."],
   ];
   return (

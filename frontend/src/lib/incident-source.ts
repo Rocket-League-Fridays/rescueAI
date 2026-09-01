@@ -10,6 +10,12 @@ import { ApiSearchRouteSource } from "@/lib/search-route-source";
  */
 export const FIXTURE_INCIDENT_ID = "mock";
 
+/**
+ * Reserved id for "no incident chosen yet" — distinct from the fixture id so a dead Rescue link
+ * from the intake landing renders empty placeholders instead of silently loading fixture data.
+ */
+export const NO_INCIDENT_ID = "none";
+
 export function isFixtureIncidentId(incidentId: string): boolean {
   return incidentId === FIXTURE_INCIDENT_ID;
 }

@@ -18,7 +18,7 @@ import { createApiClient } from "@/lib/api-client";
 import { createArtifactContentSource } from "@/lib/artifact-content";
 import { createOverrideStore } from "@/lib/incident-overrides";
 import { createSnapshotStore, type Staleness } from "@/lib/incident-snapshot";
-import { createIncidentSource } from "@/lib/incident-source";
+import { createIncidentSource, NO_INCIDENT_ID } from "@/lib/incident-source";
 import { rescueRouteToExportable } from "@/lib/route-export";
 import type { PresentedIncident } from "@/presenter/IncidentPageView";
 import { RescuePresenter } from "@/presenter/RescuePresenter";
@@ -59,8 +59,15 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
   }, [apiClient]);
 
   useEffect(() => {
+    if (incidentId === NO_INCIDENT_ID) {
+      return;
+    }
     void presenter.hydrate(incidentId);
   }, [incidentId, presenter]);
+
+  if (incidentId === NO_INCIDENT_ID) {
+    return <RescuePlaceholder />;
+  }
 
   if (unavailable !== null) {
     return (
@@ -192,6 +199,54 @@ export function RescueWorkspace({ incidentId }: { incidentId: string }) {
             artifactContentUrl={(artifactId) => artifactContent.urlFor(artifactId)}
             stacked
           />
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+/** No incident has been started in this tab yet — labeled empty boxes, no fixture data. */
+function RescuePlaceholder() {
+  return (
+    <div className="mx-auto max-w-7xl space-y-4 px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <IncidentStageNav incidentId={NO_INCIDENT_ID} stage="rescue" locateHref="/" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <section className="flex h-[460px] flex-col rounded-lg border border-line bg-surface-raised p-4">
+            <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">Rescue map</h2>
+            <div className="mt-3 flex-1">
+              <EmptyState>No incident started. Open an issue on the locate tab.</EmptyState>
+            </div>
+          </section>
+          <section className="rounded-lg border border-line bg-surface-raised p-4">
+            <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">Walk-back route</h2>
+            <div className="mt-3">
+              <EmptyState>No route planned yet.</EmptyState>
+            </div>
+          </section>
+        </div>
+
+        <aside className="space-y-4">
+          <section className="rounded-lg border border-line bg-surface-raised p-4">
+            <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">
+              Ground team brief
+            </h2>
+            <dl className="mt-3 space-y-2 text-xs">
+              <Brief label="Subject" value="—" />
+              <Brief label="Clothing" value="not recorded" />
+              <Brief label="Corridor" value="—" />
+              <Brief label="Landing zones" value="0 candidates" />
+            </dl>
+          </section>
+          <section className="rounded-lg border border-line bg-surface-raised p-4">
+            <h2 className="text-[15px] font-semibold tracking-tight text-ink-100">Live feed</h2>
+            <div className="mt-3">
+              <EmptyState>No footage yet.</EmptyState>
+            </div>
+          </section>
         </aside>
       </div>
     </div>
