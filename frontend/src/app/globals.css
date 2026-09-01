@@ -8,7 +8,8 @@ body {
 }
 
 body {
-  @apply bg-void text-ink-100 antialiased;
+  @apply text-ink-100 antialiased;
+  background-color: theme("colors.void");
   background-image:
     radial-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
     radial-gradient(ellipse at center, transparent 40%, rgba(3, 6, 8, 0.72) 100%);
