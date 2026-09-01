@@ -11,6 +11,8 @@ import type { JobDetail, LandingZone, Route } from "@/types/telemetry";
 interface RoutePanelProps {
   job: JobDetail | null;
   incident: IncidentDetail | null;
+  /** Rendered in the header — the rescue page puts its route export here. */
+  actions?: ReactNode;
 }
 
 export function formatDistance(meters: number): string {
@@ -42,7 +44,7 @@ export function formatCanopy(fraction: number | null | undefined): string {
   return `${Math.round(fraction * 100)}%`;
 }
 
-export function RoutePanel({ job, incident }: RoutePanelProps) {
+export function RoutePanel({ job, incident, actions }: RoutePanelProps) {
   const route = job?.route ?? null;
   const hasRoute = Boolean(route && route.waypoints.length > 0);
   const landingZones = [...(job?.landingZones ?? [])].sort(
@@ -51,13 +53,16 @@ export function RoutePanel({ job, incident }: RoutePanelProps) {
 
   return (
     <section className="flex flex-col overflow-hidden rounded-lg border border-olive-700 bg-tactical-800">
-      <header className="flex items-center justify-between border-b border-olive-800 px-3 py-2">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-olive-800 px-3 py-2">
         <h3 className="font-mono text-xs uppercase tracking-widest text-olive-200">
           Route to subject
         </h3>
-        <span className="font-mono text-[10px] text-olive-500">
-          {incident?.subject.displayName.toUpperCase() ?? "NO SUBJECT"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] text-olive-500">
+            {incident?.subject.displayName.toUpperCase() || "NO SUBJECT"}
+          </span>
+          {actions}
+        </div>
       </header>
 
       {hasRoute && route ? (

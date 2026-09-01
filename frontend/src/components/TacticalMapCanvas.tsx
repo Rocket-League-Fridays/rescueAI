@@ -5,21 +5,29 @@ import {
   CircleMarker,
   LayersControl,
   MapContainer,
+  Marker,
   Polygon,
   Polyline,
   Popup,
   TileLayer,
 } from "react-leaflet";
-import type { LatLngExpression } from "leaflet";
-import type { ReactNode } from "react";
+import L, { type LatLngExpression } from "leaflet";
+import { useMemo, type ReactNode } from "react";
 import "leaflet/dist/leaflet.css";
 
 import { cumulativeDistances, legForWaypointIndex } from "@/lib/geo";
-import { ROUTE_LEG_COLORS, ROUTE_LEG_LABELS } from "@/lib/route-colors";
+import {
+  ROUTE_LEG_COLORS,
+  ROUTE_LEG_LABELS,
+  SEARCH_LEG_COLORS,
+  SEARCH_LEG_LABELS,
+} from "@/lib/route-colors";
 import type { IncidentDetail } from "@/types/incident";
+import type { LastKnownPosition, SearchLeg, SearchRoute, SearchWaypoint } from "@/types/search";
 import type {
   Detection,
   GeoBounds,
+  GeoPoint,
   JobDetail,
   LandingZone,
   RouteLeg,
@@ -32,13 +40,28 @@ const CASING_COLOR = "#0b100d";
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
+/** Which beat the map is serving. Controls emphasis, not which layers exist. */
+export type MapFocus = "locate" | "rescue";
+
 interface TacticalMapCanvasProps {
   incident: IncidentDetail | null;
   job: JobDetail | null;
+  focus?: MapFocus;
+  lastKnown?: LastKnownPosition | null;
+  searchRoute?: SearchRoute | null;
+  /** Supplied only by the Locate page; makes the last-known pin draggable. */
+  onLastKnownDragged?: (point: GeoPoint) => void;
 }
 
-export default function TacticalMapCanvas({ incident, job }: TacticalMapCanvasProps) {
-  const center = resolveCenter(incident, job);
+export default function TacticalMapCanvas({
+  incident,
+  job,
+  focus = "rescue",
+  lastKnown = null,
+  searchRoute = null,
+  onLastKnownDragged,
+}: TacticalMapCanvasProps) {
+  const center = resolveCenter(incident, job, focus, lastKnown);
   const trail = (incident?.trailLine ?? []).map(
     (point) => [point.lat, point.lng] as LatLngExpression,
   );
@@ -50,10 +73,11 @@ export default function TacticalMapCanvas({ incident, job }: TacticalMapCanvasPr
   const subject = bestSubject(job);
   const pin = subject?.groundPoint ?? job?.situation?.groundPoint ?? null;
   const bufferMeters = incident?.corridorBufferMeters ?? 80;
+  const isLocate = focus === "locate";
 
   return (
     <MapContainer
-      key={incident?.id ?? "idle"}
+      key={`${incident?.id ?? "idle"}-${focus}`}
       center={center}
       zoom={15}
       maxZoom={19}
@@ -83,9 +107,26 @@ export default function TacticalMapCanvas({ incident, job }: TacticalMapCanvasPr
       {trail.length > 1 ? (
         <Polyline positions={trail} pathOptions={{ color: "#c4d67c", weight: 2 }} />
       ) : null}
+      {searchRoute
+        ? searchRoute.legs.map((leg, index) => (
+            <SearchLegLine
+              key={`search-${index}-${leg.startIndex}`}
+              leg={leg}
+              positions={searchLegPositions(searchRoute.waypoints, leg)}
+              dimmed={!isLocate}
+            />
+          ))
+        : null}
       {rankedZones.map((zone, rank) => (
         <LandingZoneShape key={zone.id} zone={zone} rank={rank} />
       ))}
+      {lastKnown ? (
+        <LastKnownOverlay
+          lastKnown={lastKnown}
+          subjectName={incident?.subject.displayName ?? "Subject"}
+          onDragged={onLastKnownDragged}
+        />
+      ) : null}
       {legs.length > 0 ? (
         legs.map((leg, index) => (
           <RouteLegLine
@@ -370,6 +411,133 @@ function PopupBody({
   );
 }
 
+function SearchLegLine({
+  leg,
+  positions,
+  dimmed,
+}: {
+  leg: SearchLeg;
+  positions: LatLngExpression[];
+  dimmed: boolean;
+}) {
+  if (positions.length < 2) {
+    return null;
+  }
+  const color = SEARCH_LEG_COLORS[leg.kind];
+  return (
+    <>
+      <Polyline
+        positions={positions}
+        pathOptions={{
+          color: CASING_COLOR,
+          weight: 7,
+          opacity: dimmed ? 0.25 : 0.45,
+          interactive: false,
+        }}
+      />
+      <Polyline
+        positions={positions}
+        pathOptions={{
+          color,
+          weight: leg.kind === "transect" ? 3 : 2,
+          opacity: dimmed ? 0.35 : 0.95,
+          dashArray: leg.kind === "turn" ? "4 5" : undefined,
+        }}
+      >
+        <Popup>
+          <PopupBody
+            title={leg.label || SEARCH_LEG_LABELS[leg.kind]}
+            subtitle={SEARCH_LEG_LABELS[leg.kind]}
+            rows={[
+              ["Distance", formatMeters(leg.distanceMeters)],
+              ["Estimate", `${leg.estimatedMinutes.toFixed(1)} min`],
+              ["Waypoints", `${leg.startIndex}\u2013${leg.endIndex}`],
+            ]}
+          />
+        </Popup>
+      </Polyline>
+    </>
+  );
+}
+
+/**
+ * The operator's approximate last-known position. Drag handling uses a `divIcon` because
+ * Leaflet's default marker icon resolves a bundled image path that breaks under Next, and
+ * `CircleMarker` cannot be dragged.
+ */
+function LastKnownOverlay({
+  lastKnown,
+  subjectName,
+  onDragged,
+}: {
+  lastKnown: LastKnownPosition;
+  subjectName: string;
+  onDragged?: (point: GeoPoint) => void;
+}) {
+  const draggable = typeof onDragged === "function";
+  const icon = useMemo(
+    () =>
+      L.divIcon({
+        className: "",
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+        html:
+          '<div style="width:18px;height:18px;border-radius:9999px;background:#f0c14b;' +
+          `border:2px solid ${CASING_COLOR};box-shadow:0 0 0 3px rgba(240,193,75,0.28);` +
+          `cursor:${draggable ? "grab" : "default"}"></div>`,
+      }),
+    [draggable],
+  );
+
+  return (
+    <>
+      <Circle
+        center={[lastKnown.point.lat, lastKnown.point.lng]}
+        radius={lastKnown.radiusMeters}
+        pathOptions={{
+          color: "#f0c14b",
+          weight: 1.5,
+          dashArray: "5 6",
+          fillColor: "#f0c14b",
+          fillOpacity: 0.08,
+        }}
+      />
+      <Marker
+        position={[lastKnown.point.lat, lastKnown.point.lng]}
+        icon={icon}
+        draggable={draggable}
+        eventHandlers={
+          draggable
+            ? {
+                dragend: (event) => {
+                  const { lat, lng } = event.target.getLatLng();
+                  onDragged?.({ lat, lng });
+                },
+              }
+            : undefined
+        }
+      >
+        <Popup>
+          <PopupBody
+            title={`${subjectName} \u00b7 last known`}
+            subtitle={draggable ? "Drag to correct" : "Approximate"}
+            rows={[
+              ["Position", formatLatLng(lastKnown.point.lat, lastKnown.point.lng)],
+              ["Uncertainty", formatMeters(lastKnown.radiusMeters)],
+            ]}
+          />
+        </Popup>
+      </Marker>
+    </>
+  );
+}
+
+function searchLegPositions(waypoints: SearchWaypoint[], leg: SearchLeg): LatLngExpression[] {
+  return waypoints
+    .slice(leg.startIndex, leg.endIndex + 1)
+    .map((waypoint) => [waypoint.lat, waypoint.lng] as LatLngExpression);
+}
+
 function rankLandingZones(zones: LandingZone[]): LandingZone[] {
   return [...zones].sort((a, b) => b.suitabilityScore - a.suitabilityScore);
 }
@@ -409,7 +577,15 @@ function bestSubject(job: JobDetail | null): Detection | null {
   );
 }
 
-function resolveCenter(incident: IncidentDetail | null, job: JobDetail | null): LatLngExpression {
+function resolveCenter(
+  incident: IncidentDetail | null,
+  job: JobDetail | null,
+  focus: MapFocus,
+  lastKnown: LastKnownPosition | null,
+): LatLngExpression {
+  if (focus === "locate" && lastKnown) {
+    return [lastKnown.point.lat, lastKnown.point.lng];
+  }
   const subject = bestSubject(job);
   if (subject?.groundPoint) {
     return [subject.groundPoint.lat, subject.groundPoint.lng];

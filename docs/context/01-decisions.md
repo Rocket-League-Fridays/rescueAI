@@ -111,3 +111,33 @@ These were agreed while scaffolding. Do not silently reverse them.
 ## D17 — Demo GIS uses a cached / synthetic Y DEM
 
 **Decision:** `YTrailGisRouter` uses an in-memory synthetic DEM around the committed Y-trail GeoJSON. No live 3DEP or Overpass on stage. LZ + walk-back snap onto the trail line.
+
+## D19 — Two operational pages: Locate and Rescue
+
+**Decision:** The dashboard is split along the operational story. `/` opens an incident from a
+transcript; `/locate/{incidentId}` owns the last-known pin, scan parameters, the drone search
+route and its export, sortie attach, and scan results; `/rescue/{incidentId}` owns the subject
+fix, ranked landing zones, the walk-back path, and the elevation profile. Both incident pages are
+URL-addressable and refetch on their own.
+
+**Why:** The single route conflated data entry with the operational view, and the tactical picture
+had no address — a reload mid-incident lost it. The split also matches the work breakdown: Locate
+consumes the search planner, Rescue consumes the GIS router.
+
+**Consequences:**
+
+- `mock` is a **reserved incident id**. `/locate/mock` and `/rescue/mock` serve the committed
+  fixture with no network at all, so the whole interface demos with zero backend. Fixture data is
+  always badged; it must never render unbadged.
+- Last-known-good snapshots are cached per incident id in `sessionStorage`. A failed or 404
+  refresh re-presents the cached data with a staleness readout — it never blanks the page. Only a
+  cold tab with no cache and no server shows an explicit "Incident unavailable" state.
+- `DashboardPresenter` / `DashboardView` are replaced by `LocatePresenter` / `RescuePresenter`
+  over a shared `IncidentPagePresenter` skeleton. All still React-free, per D9.
+- Operator edits to subject fields, corridor buffer, and the last-known pin are a **client-side
+  review layer** with per-field `AUTO` / `EDITED` provenance, because the backend has no incident
+  PATCH and does not persist those values. See
+  [`07-frontend-data-map.md`](07-frontend-data-map.md).
+
+**Rejected:** A global store alone (page 2 blanks on reload). Addressing the fixture by its UUID
+(the URL would look indistinguishable from a real incident).

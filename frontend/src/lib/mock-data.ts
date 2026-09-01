@@ -1,4 +1,6 @@
+import { planFixtureSearchRoute } from "@/lib/fixture-search-planner";
 import type { IncidentDetail } from "@/types/incident";
+import type { LastKnownPosition, SearchRoute } from "@/types/search";
 import type {
   Detection,
   DroneTelemetry,
@@ -27,6 +29,12 @@ const LZ_SADDLE_ID = "d3f70a18-64b2-49e5-8c03-1b5e7a9246df";
 const LZ_SWITCHBACK_ID = "0b62c94e-8fa1-4d36-a750-e34c81f6207b";
 
 const SUBJECT_POINT: GeoPoint = { lat: 40.25215, lng: -111.61845 };
+
+/** What the caller could actually say — the top of the switchbacks, not the subject's true fix. */
+const LAST_KNOWN: LastKnownPosition = {
+  point: { lat: 40.2518, lng: -111.6192 },
+  radiusMeters: 250,
+};
 
 const trailLine: GeoPoint[] = [
   { lat: 40.24555, lng: -111.62815 },
@@ -232,6 +240,8 @@ const job: Job = {
 export const mockJobDetail: JobDetail = {
   ...job,
   telemetry,
+  // The fixture carries no frame bytes, so the evidence panes stay in their empty state.
+  artifacts: [],
   detections,
   landingZones,
   route,
@@ -255,6 +265,20 @@ export const mockIncidentDetail: IncidentDetail = {
   updatedAt: "2026-08-30T18:43:07Z",
   situationId: situation.id,
   corridorBufferMeters: 80,
+  lastKnownPoint: LAST_KNOWN.point,
+  lastKnownRadiusMeters: LAST_KNOWN.radiusMeters,
+  searchRouteId: "fixture-search",
   jobs: [job],
   situation,
 };
+
+/** Geometry from the placeholder planner, so the Locate page demos with no backend running. */
+export const mockSearchRoute: SearchRoute = planFixtureSearchRoute({
+  incidentId: INCIDENT_ID,
+  lastKnown: LAST_KNOWN,
+  patternKind: "parallel_track",
+  altitudeAglMeters: 120,
+  overlapPercent: 70,
+});
+
+export const mockLastKnown: LastKnownPosition = LAST_KNOWN;

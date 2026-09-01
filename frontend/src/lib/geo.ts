@@ -36,3 +36,15 @@ export function legForWaypointIndex(legs: RouteLeg[], index: number): RouteLeg |
 function toRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
 }
+
+/** Offsets a point by a north/east distance in meters (flat-earth, fine at search-area scale). */
+export function offsetMeters(
+  point: { lat: number; lng: number },
+  northMeters: number,
+  eastMeters: number,
+): { lat: number; lng: number } {
+  const latDegrees = (northMeters / EARTH_RADIUS_M) * (180 / Math.PI);
+  const lngDegrees =
+    (eastMeters / (EARTH_RADIUS_M * Math.cos(toRadians(point.lat)))) * (180 / Math.PI);
+  return { lat: point.lat + latDegrees, lng: point.lng + lngDegrees };
+}

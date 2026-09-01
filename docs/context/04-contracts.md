@@ -4,6 +4,8 @@ JSON on the wire is **camelCase**. Python domain/SQLite columns are **snake_case
 
 If you add a field: update `domain.py`, `schemas.py`, `telemetry.ts` / `incident.ts`, and the SQLite row mapping in the same change.
 
+Contracts the frontend is already built against but the backend has not implemented yet — `SearchRoute`, the search-planner endpoints, and three optional `Incident` fields — live in [`07-frontend-data-map.md`](07-frontend-data-map.md), along with a field-by-field map of what the UI captures and displays.
+
 ## Enums
 
 | Name | Values |

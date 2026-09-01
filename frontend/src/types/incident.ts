@@ -19,6 +19,15 @@ export interface Incident {
   updatedAt: string;
   situationId?: string | null;
   corridorBufferMeters: number;
+  /**
+   * Operator's approximate last-known position for the subject. Optional because the backend
+   * does not persist it yet (see `docs/context/07-frontend-seams.md`); until it does, the
+   * frontend keeps it in the override layer.
+   */
+  lastKnownPoint?: GeoPoint | null;
+  lastKnownRadiusMeters?: number | null;
+  /** Set once a search route has been planned for this incident. */
+  searchRouteId?: string | null;
 }
 
 export interface IncidentDetail extends Incident {
